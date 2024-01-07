@@ -10,6 +10,22 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(messages REQUIRED)
+find_package(sensor_msgs REQUIRED)
+
+add_executable(asv_state src/asv_state.cpp)
+ament_target_dependencies(asv_state rclcpp messages sensor_msgs)
+
+install(TARGETS
+  asv_state
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+  config
+  DESTINATION share/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
