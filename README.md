@@ -6,6 +6,10 @@
 - Develop environment block with custom wind/currents and historical wind/currents
 
 # Dependencies
+## ROS2 Humble Hawksbill
+This software is written to work with [ROS2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html). 
+
+
 ## Foxglove
 To view robot data in Foxglove, you need set up the [foxglove websocket](https://docs.foxglove.dev/docs/connecting-to-data/ros-foxglove-bridge/).
 
