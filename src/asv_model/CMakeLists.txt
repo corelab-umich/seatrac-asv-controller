@@ -23,7 +23,7 @@ install(TARGETS
 )
 
 install(DIRECTORY
-  config
+  # config
   DESTINATION share/${PROJECT_NAME}
 )
 
