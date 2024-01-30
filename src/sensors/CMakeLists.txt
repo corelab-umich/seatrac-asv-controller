@@ -15,7 +15,11 @@ find_package(sensor_msgs REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_executable(imu_driver src/main.cpp)
+set(UTIL_HEADER_FILES include/utils/utils.h)
+set(NETWORKING_HEADER_FILES include/networking/UDPClient.h)
+
+add_executable(imu_driver src/main.cpp ${UTIL_HEADER_FILES} ${NETWORKING_HEADER_FILES})
+target_include_directories(imu_driver PRIVATE include/)
 ament_target_dependencies(imu_driver rclcpp sensor_msgs Boost)
 
 install(TARGETS

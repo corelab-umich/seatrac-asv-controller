@@ -11,6 +11,10 @@ Node to read IMU sensor data from UDP packets and publish data on the following 
 #include <string>
 #include <iostream>
 
+// other headers
+#include "utils/utils.h"
+#include "networking/UDPClient.h"
+
 // ros headers
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
@@ -28,89 +32,9 @@ Node to read IMU sensor data from UDP packets and publish data on the following 
 using namespace std::chrono_literals;
 using boost::asio::ip::address;
 using boost::asio::ip::udp;
+using util::to_ushort;
+using util::to_short;
 
-unsigned short to_ushort(const unsigned char *buf, bool little_endian = true) {
-  unsigned short out = 0;
-  if (little_endian) {
-    out = buf[1];
-    out <<= 8;
-    out |= buf[0];
-  } else {
-    out = buf[0];
-    out <<= 8;
-    out |= buf[1];
-  }
-
-  return out;
-}
-
-short to_short(const unsigned char *buf, bool little_endian = true) {
-  short out = 0;
-  if (little_endian) {
-    out = buf[1];
-    out <<= 8;
-    out |= buf[0];
-  } else {
-    out = buf[0];
-    out <<= 8;
-    out |= buf[1];
-  }
-
-  return out;
-}
-
-class MessageReceiver
-{
-public:
-  virtual void handle_message(const unsigned char *buf, size_t buf_size) = 0;
-};
-
-class UDPClient
-{
-public:
-  UDPClient(const std::string &ip_address, int port, size_t max_buffer_size) : recv_buffer_(max_buffer_size), ip_address_(ip_address), port_(port){};
-
-  void start(MessageReceiver &handler_obj)
-  {
-    socket_.open(udp::v4());
-    // socket_.bind(udp::endpoint(address::from_string(ip_address_), port_));
-    socket_.bind(udp::endpoint(udp::v4(), port_));
-    handlerObj = &handler_obj;
-
-    async_receive_message();
-
-    std::cout << "starting receiving\n";
-    io_service_.run();
-  }
-
-private:
-  void handle_receive(const boost::system::error_code &error, size_t bytes_transferred)
-  {
-    if (error)
-    {
-      std::cout << "Receive failed: " << error.message() << "\n";
-    } else {
-      handlerObj->handle_message(recv_buffer_.data(), bytes_transferred);
-    }
-
-    async_receive_message();
-  }
-
-  void async_receive_message()
-  {
-    socket_.async_receive_from(boost::asio::buffer(recv_buffer_),
-                               remote_endpoint_,
-                               boost::bind(&UDPClient::handle_receive, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
-  }
-
-  boost::asio::io_service io_service_{};
-  udp::socket socket_{io_service_};
-  std::vector<unsigned char> recv_buffer_;
-  udp::endpoint remote_endpoint_;
-  std::string ip_address_;
-  int port_;
-  MessageReceiver *handlerObj;
-};
 
 struct DatetimeMessage {
   // Year
@@ -219,6 +143,8 @@ struct ImuMessage {
 
 };
 
+
+// this is just part of test infra for now. maybe will convert into proper test lib later
 class Sender
 {
 private:
