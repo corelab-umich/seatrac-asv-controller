@@ -22,9 +22,13 @@ set(NETWORKING_SRC_FILES src/networking/UDPClient.cpp)
 add_library(asv_utils ${UTIL_SRC_FILES} ${NETWORKING_SRC_FILES})
 target_include_directories(asv_utils
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
 ament_target_dependencies(asv_utils Boost)
+
+install(DIRECTORY
+  DESTINATION share/${PROJECT_NAME}
+)
 
 # extra stuff to make library visible in ros env
 install(

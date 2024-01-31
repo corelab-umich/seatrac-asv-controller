@@ -12,8 +12,9 @@ Node to read IMU sensor data from UDP packets and publish data on the following 
 #include <iostream>
 
 // other headers
-#include "utils/utils.h"
-#include "networking/UDPClient.h"
+#include <asv_utils/utils/utils.h>
+#include <asv_utils/networking/UDPClient.h>
+#include <asv_utils/networking/MessageReceiver.h>
 
 // ros headers
 #include "rclcpp/rclcpp.hpp"
@@ -30,10 +31,10 @@ Node to read IMU sensor data from UDP packets and publish data on the following 
 #define BUFFER_SIZE 1024
 
 using namespace std::chrono_literals;
+using namespace asv::networking;
+using namespace asv::utils;
 using boost::asio::ip::address;
 using boost::asio::ip::udp;
-using util::to_ushort;
-using util::to_short;
 
 
 struct DatetimeMessage {

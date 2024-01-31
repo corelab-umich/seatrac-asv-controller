@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(sensors)
+project(asv_sensors)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -11,16 +11,14 @@ find_package(ament_cmake REQUIRED)
 find_package(Boost 1.35.0 REQUIRED COMPONENTS system)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(asv_utils REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-set(UTIL_HEADER_FILES include/utils/utils.h)
-set(NETWORKING_HEADER_FILES include/networking/UDPClient.h)
-
-add_executable(imu_driver src/main.cpp ${UTIL_HEADER_FILES} ${NETWORKING_HEADER_FILES})
-target_include_directories(imu_driver PRIVATE include/)
-ament_target_dependencies(imu_driver rclcpp sensor_msgs Boost)
+add_executable(imu_driver src/main.cpp)
+# target_include_directories(imu_driver PRIVATE include/)
+ament_target_dependencies(imu_driver PUBLIC rclcpp sensor_msgs Boost asv_utils)
 
 install(TARGETS
   imu_driver
