@@ -11,17 +11,22 @@ find_package(ament_cmake REQUIRED)
 find_package(Boost 1.35.0 REQUIRED COMPONENTS system)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(asv_utils REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
 add_executable(imu_driver src/main.cpp)
-# target_include_directories(imu_driver PRIVATE include/)
-ament_target_dependencies(imu_driver PUBLIC rclcpp sensor_msgs Boost asv_utils)
+ament_target_dependencies(imu_driver PUBLIC rclcpp sensor_msgs Boost asv_utils std_msgs)
+
+add_executable(packet_publisher src/SensorPacketPublisher.cpp include/asv_sensors/SensorPacketPublisher.h)
+target_include_directories(packet_publisher PRIVATE include/)
+ament_target_dependencies(packet_publisher PUBLIC rclcpp asv_utils std_msgs)
 
 install(TARGETS
   imu_driver
+  packet_publisher
   DESTINATION lib/${PROJECT_NAME}
 )
 

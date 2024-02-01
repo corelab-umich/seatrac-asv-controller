@@ -71,7 +71,7 @@ public:
   {
     imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("sensor_data", 1);
     timer_ = this->create_wall_timer(
-        1000ms, std::bind(&ImuDriver::publish_data, this));
+        500ms, std::bind(&ImuDriver::publish_data, this));
   }
 
 private:
@@ -109,9 +109,13 @@ int main(int argc, char *argv[])
   rclcpp::init(argc, argv, rclcpp::InitOptions(), rclcpp::SignalHandlerOptions::None);
   UDPClient client{std::string(IPADDRESS), UDP_PORT, BUFFER_SIZE};
   Test test{};
-  std::thread r([&]
-                { client.start(test); });
+  // std::thread r([&]
+  //               { client.start(test); });
+  // auto n = std::make_shared<ImuDriver>();
   rclcpp::spin(std::make_shared<ImuDriver>());
+  // while (rclcpp::ok()) {
+  //   std::this_thread::sleep_for(100ms);
+  // }
   rclcpp::shutdown();
   return 0;
 }
