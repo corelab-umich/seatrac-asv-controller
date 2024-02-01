@@ -1,28 +1,31 @@
 cmake_minimum_required(VERSION 3.8)
-project(asv_utils)
+project(asv_messages)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
-
 # find dependencies
 find_package(ament_cmake REQUIRED)
-include(ConfigExtras)
+# uncomment the following section in order to fill in
+# further dependencies manually.
+# find_package(<dependency> REQUIRED)
 
-set(UTIL_HEADER_FILES include/asv_utils/utils/utils.h)
-set(NETWORKING_HEADER_FILES include/asv_utils/networking/UDPClient.h)
+find_package(asv_utils REQUIRED)
 
-set(UTIL_SRC_FILES src/utils/utils.cpp)
-set(NETWORKING_SRC_FILES src/networking/UDPClient.cpp)
+set(MESSAGES_HEADER_FILES include/messages/DatetimeMessage.h include/messages/ImuMessage.h)
+set(MESSAGES_SRC_FILES src/DatetimeMessage.cpp src/ImuMessage.cpp)
 
-add_library(asv_utils ${UTIL_SRC_FILES} ${NETWORKING_SRC_FILES})
-target_include_directories(asv_utils
+add_library(asv_messages ${MESSAGES_SRC_FILES})
+target_include_directories(asv_messages
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
-ament_target_dependencies(asv_utils Boost)
+ament_target_dependencies(asv_messages asv_utils)
+
+install(DIRECTORY
+  DESTINATION share/${PROJECT_NAME}
+)
 
 # extra stuff to make library visible in ros env
 install(
@@ -31,7 +34,7 @@ install(
 )
 
 install(
-  TARGETS asv_utils
+  TARGETS asv_messages
   EXPORT export_${PROJECT_NAME}
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -39,7 +42,7 @@ install(
 )
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-ament_export_dependencies(Boost)
+ament_export_dependencies(asv_utils)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -53,4 +56,4 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-ament_package(CONFIG_EXTRAS "cmake/ConfigExtras.cmake")
+ament_package()
