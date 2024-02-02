@@ -13,7 +13,7 @@ find_package(ament_cmake REQUIRED)
 
 find_package(asv_utils REQUIRED)
 
-set(MESSAGES_HEADER_FILES include/messages/DatetimeMessage.h include/messages/ImuMessage.h)
+# set(MESSAGES_HEADER_FILES include/messages/DatetimeMessage.h include/messages/ImuMessage.h)
 set(MESSAGES_SRC_FILES src/DatetimeMessage.cpp src/ImuMessage.cpp)
 
 add_library(asv_messages ${MESSAGES_SRC_FILES})

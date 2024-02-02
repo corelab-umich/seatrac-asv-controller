@@ -15,10 +15,13 @@ Node to read IMU sensor data from UDP packets and publish data on the following 
 #include <asv_utils/utils/utils.h>
 #include <asv_utils/networking/UDPClient.h>
 #include <asv_utils/networking/MessageReceiver.h>
+#include <asv_messages/ImuMessage.h>
 
 // ros headers
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include <std_msgs/msg/header.hpp>
+#include <std_msgs/msg/byte_multi_array.hpp>
 
 // networking headers
 #include <boost/asio.hpp>
@@ -69,7 +72,7 @@ public:
   ImuDriver()
       : Node("imu_driver")
   {
-    imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>("sensor_data", 1);
+    imu_pub_ = this->create_publisher<std_msgs::msg::ByteMultiArray>("raw_sensor_packets", rclcpp::SensorDataQoS());
     timer_ = this->create_wall_timer(
         500ms, std::bind(&ImuDriver::publish_data, this));
   }
@@ -78,18 +81,21 @@ private:
   void publish_data()
   {
 
-    auto msg = sensor_msgs::msg::Imu();
-    msg.orientation.w = count_;
+    auto msg = std_msgs::msg::ByteMultiArray();
+    asv::messages::ImuMessage imu_msg{};
+    imu_msg.heading = 56;
+    imu_msg.timestamp.year = ++count_;
+    msg.data = imu_msg.encode();
     imu_pub_->publish(msg);
 
-    sender.send_message("");
+    // sender.send_message("");
   }
 
-  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
+  rclcpp::Publisher<std_msgs::msg::ByteMultiArray>::SharedPtr imu_pub_;
   boost::asio::io_service io_service_{};
   rclcpp::TimerBase::SharedPtr timer_;
   size_t count_;
-  Sender sender{};
+  // Sender sender{};
 };
 
 class Test: public MessageReceiver
@@ -107,8 +113,8 @@ private:
 int main(int argc, char *argv[])
 {
   rclcpp::init(argc, argv, rclcpp::InitOptions(), rclcpp::SignalHandlerOptions::None);
-  UDPClient client{std::string(IPADDRESS), UDP_PORT, BUFFER_SIZE};
-  Test test{};
+  // UDPClient client{std::string(IPADDRESS), UDP_PORT, BUFFER_SIZE};
+  // Test test{};
   // std::thread r([&]
   //               { client.start(test); });
   // auto n = std::make_shared<ImuDriver>();
