@@ -5,7 +5,7 @@
 #include <iostream>
 
 #define IPADDRESS "127.0.0.1"
-#define UDP_PORT 13251
+#define UDP_PORT 62001
 #define BUFFER_SIZE 1024
 
 namespace asv::ros

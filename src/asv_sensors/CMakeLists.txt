@@ -8,7 +8,6 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 # only boost versions >=1.35.0 come bundled with the asio networking library
-find_package(Boost 1.35.0 REQUIRED COMPONENTS system)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -19,8 +18,8 @@ find_package(asv_messages REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_executable(imu_driver src/main.cpp)
-ament_target_dependencies(imu_driver PUBLIC rclcpp sensor_msgs Boost asv_utils std_msgs asv_messages)
+add_executable(mock_imu src/MockIMU.cpp)
+ament_target_dependencies(mock_imu PUBLIC rclcpp asv_utils asv_messages)
 
 add_executable(packet_publisher src/SensorPacketPublisher.cpp include/asv_sensors/SensorPacketPublisher.h)
 target_include_directories(packet_publisher PRIVATE include/)
@@ -31,7 +30,7 @@ target_include_directories(imu_sensor_driver PRIVATE include/)
 ament_target_dependencies(imu_sensor_driver PUBLIC rclcpp asv_utils std_msgs sensor_msgs tf2 asv_messages)
 
 install(TARGETS
-  imu_driver
+  mock_imu
   packet_publisher
   imu_sensor_driver
   DESTINATION lib/${PROJECT_NAME}
