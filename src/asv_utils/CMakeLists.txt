@@ -12,10 +12,10 @@ find_package(ament_cmake REQUIRED)
 include(ConfigExtras)
 
 set(UTIL_HEADER_FILES include/asv_utils/utils/utils.h)
-set(NETWORKING_HEADER_FILES include/asv_utils/networking/UDPClient.h)
+set(NETWORKING_HEADER_FILES include/asv_utils/networking/UDPClient.h include/asv_utils/networking/UDPSender.h)
 
 set(UTIL_SRC_FILES src/utils/utils.cpp)
-set(NETWORKING_SRC_FILES src/networking/UDPClient.cpp)
+set(NETWORKING_SRC_FILES src/networking/UDPClient.cpp src/networking/UDPSender.cpp)
 
 add_library(asv_utils ${UTIL_SRC_FILES} ${NETWORKING_SRC_FILES})
 target_include_directories(asv_utils
