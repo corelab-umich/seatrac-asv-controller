@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  packet_publisher:
+    build: ./
+    command: ros2 run asv_sensors packet_publisher
+
+  imu_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors imu_sensor_driver

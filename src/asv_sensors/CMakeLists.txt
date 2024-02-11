@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(asv_model)
+project(asv_sensors)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -7,23 +7,37 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+# only boost versions >=1.35.0 come bundled with the asio networking library
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(asv_utils REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(asv_messages REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(messages REQUIRED)
-find_package(sensor_msgs REQUIRED)
 
-add_executable(asv_state src/asv_state.cpp)
-ament_target_dependencies(asv_state rclcpp messages sensor_msgs)
+add_executable(mock_imu src/MockIMU.cpp)
+ament_target_dependencies(mock_imu PUBLIC rclcpp asv_utils asv_messages)
+
+add_executable(packet_publisher src/SensorPacketPublisher.cpp include/asv_sensors/SensorPacketPublisher.h)
+target_include_directories(packet_publisher PRIVATE include/)
+ament_target_dependencies(packet_publisher PUBLIC rclcpp asv_utils std_msgs)
+
+add_executable(imu_sensor_driver src/ImuSensorDriver.cpp include/asv_sensors/ImuSensorDriver.h)
+target_include_directories(imu_sensor_driver PRIVATE include/)
+ament_target_dependencies(imu_sensor_driver PUBLIC rclcpp asv_utils std_msgs sensor_msgs tf2 asv_messages)
 
 install(TARGETS
-  asv_state
+  mock_imu
+  packet_publisher
+  imu_sensor_driver
   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY
-  # config
+  launch
   DESTINATION share/${PROJECT_NAME}
 )
 

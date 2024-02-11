@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(asv_model)
+project(asv_messages)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -10,22 +10,39 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(messages REQUIRED)
-find_package(sensor_msgs REQUIRED)
 
-add_executable(asv_state src/asv_state.cpp)
-ament_target_dependencies(asv_state rclcpp messages sensor_msgs)
+find_package(asv_utils REQUIRED)
 
-install(TARGETS
-  asv_state
-  DESTINATION lib/${PROJECT_NAME}
-)
+# set(MESSAGES_HEADER_FILES include/messages/DatetimeMessage.h include/messages/ImuMessage.h)
+set(MESSAGES_SRC_FILES src/DatetimeMessage.cpp src/ImuMessage.cpp)
+
+add_library(asv_messages ${MESSAGES_SRC_FILES})
+target_include_directories(asv_messages
+  PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
+ament_target_dependencies(asv_messages asv_utils)
 
 install(DIRECTORY
-  # config
   DESTINATION share/${PROJECT_NAME}
 )
+
+# extra stuff to make library visible in ros env
+install(
+  DIRECTORY include/
+  DESTINATION include/${PROJECT_NAME}
+)
+
+install(
+  TARGETS asv_messages
+  EXPORT export_${PROJECT_NAME}
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(asv_utils)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

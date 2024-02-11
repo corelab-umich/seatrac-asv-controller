@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="asv_sensors" exec="packet_publisher" name="packet_publisher"/>
+  <node pkg="asv_sensors" exec="imu_sensor_driver" name="imu_sensor_driver"/>
+</launch>
