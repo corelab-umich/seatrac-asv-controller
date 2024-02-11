@@ -15,8 +15,8 @@ namespace asv::networking
     void UDPClient::start(MessageReceiver &handler_obj)
     {
         socket_.open(udp::v4());
-        socket_.bind(udp::endpoint(address::from_string(ip_address_), port_));
-        // socket_.bind(udp::endpoint(udp::v4(), port_));
+        // socket_.bind(udp::endpoint(address::from_string(ip_address_), port_));
+        socket_.bind(udp::endpoint(udp::v4(), port_));
         handler_obj_ = &handler_obj;
 
         async_receive_message();
