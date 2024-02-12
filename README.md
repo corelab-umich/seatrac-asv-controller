@@ -14,6 +14,14 @@ This software is written to work with [ROS2 Humble Hawksbill](https://docs.ros.o
 The Foxglove websocket will be automatically installed through the Dockerfile.
 
 # Running
+
+## Easy run
+```
+docker compose up --build
+```
+This will compile the local ros ws, build into docker containers, and launch all the services.
+
+## Individual services
 ```
 docker run -p 62001:62001/udp --rm [container_name]
 ```
