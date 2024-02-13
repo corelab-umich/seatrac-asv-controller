@@ -1,0 +1,9 @@
+FROM ros:humble
+
+RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
+    apt-get update && apt-get install -y\
+      ros-$ROS_DISTRO-foxglove-bridge \    
+    && rm -rf /var/lib/apt/lists/*
+
+# run launch file
+CMD ["ros2", "launch", "foxglove_bridge", "foxglove_bridge_launch.xml"]

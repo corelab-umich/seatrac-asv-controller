@@ -25,8 +25,7 @@ ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS
 COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
-    apt-get update && apt-get install -y\
-      ros-humble-foxglove-bridge \    
+    apt-get update && apt-get install -y\ 
     && rosdep install -y \
       --from-paths \
         src \
