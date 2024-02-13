@@ -19,22 +19,22 @@ The Foxglove websocket will be automatically installed through the Dockerfile.
 ```
 docker compose up --build
 ```
-This will compile the local ros ws, build into docker containers, and launch all the services.
+This will compile the local ros ws, build into docker containers, and launch all the services (ctrl-c to stop). For subsequent runs, `--build` can be omitted (unless there are source code changes requiring a rebuild of the docker images). 
 
 ## Individual services
+
+The `docker-compose.yml` file contains some of the different services that can be launched. We can use `docker compose up [service name]` to run a service individually
+
+### Advanced
 ```
-docker run -p 62001:62001/udp --rm [container_name]
+docker run -p 62001:62001/udp --rm [container_name] bash
 ```
+Once the bash shell is launched, we have free control to launch any ros nodes we desire. For example, 
 `ros2 run asv_model asv_state`
 will run the state publisher
 
-## Foxglove
-We must open a docker container that exposes its port to the network/machine
-```
-docker run -it -p 8765:8765 --rm [container_name] bash
-```
-`ros2 launch foxglove_bridge foxglove_bridge_launch.xml`
-will open up the websocket and enable data to be viewed from foxglove
+#### Foxglove
+If we want to use Foxglove, we need to launch the foxglove bridge. This is handled in the `foxglove_bridge`  service in the docker-compose.yml file, and the `docker compose run foxglove_bridge` command can be used to launch this service.
 
 # Notes
 Quick reference for [message types](https://github.com/ros2/common_interfaces).
