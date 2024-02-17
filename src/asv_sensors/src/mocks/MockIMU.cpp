@@ -1,9 +1,3 @@
-/*
-Node to read IMU sensor data from UDP packets and publish data on the following topics:
-/imu/std_data - topic for standard sensor_msgs/Imu message
-/imu/full_data -  topic for custom message containing the full data published by IMU
-*/
-
 // system headers
 #include <chrono>
 #include <cmath>
@@ -18,18 +12,19 @@ Node to read IMU sensor data from UDP packets and publish data on the following 
 using namespace std::chrono_literals;
 using namespace asv::networking;
 
-#define LOCALHOST "127.0.0.1"
-#define PORT 62001
+#define LOCALHOST "127.0.0.2"
+#define PORT 62002
 
 class MockIMU : public rclcpp::Node
 {
 public:
-  MockIMU()
-      : Node("mock_imu"), udp_sender_(LOCALHOST, PORT)
+  MockIMU() : Node("mock_imu"), udp_sender_()
   {
     // imu_pub_ = this->create_publisher<std_msgs::msg::ByteMultiArray>("raw_sensor_packets", rclcpp::SensorDataQoS());
-    timer_ = this->create_wall_timer(
-        250ms, std::bind(&MockIMU::publish_data, this));
+    timer_ = this->create_wall_timer(250ms, std::bind(&MockIMU::publish_data, this));
+    this->declare_parameter("ip_address", LOCALHOST);
+    this->declare_parameter("udp_port", PORT);
+    udp_sender_.init(this->get_parameter("ip_address").as_string(), this->get_parameter("udp_port").as_int());
   }
 
 private:
@@ -55,11 +50,11 @@ private:
 
   // rclcpp::Publisher<std_msgs::msg::ByteMultiArray>::SharedPtr imu_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
-  size_t count_{0};
+  size_t count_{ 0 };
   asv::networking::UDPSender udp_sender_;
 };
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
   rclcpp::init(argc, argv, rclcpp::InitOptions(), rclcpp::SignalHandlerOptions::None);
   rclcpp::spin(std::make_shared<MockIMU>());
