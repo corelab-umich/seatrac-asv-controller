@@ -1,30 +1,5 @@
-services:
-  packet_publisher:
-    build: ./
-    ports:
-      - "${UDP_PORT}:${UDP_PORT}/udp"
-    command: ros2 run asv_sensors packet_publisher --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT}
-
-  imu_sensor_driver:
-    build: ./
-    command: ros2 run asv_sensors imu_sensor_driver
-
-  power_level_sensor_driver:
-    build: ./
-    command: ros2 run asv_sensors power_level_sensor_driver 
-
-  mock_imu:
-    build: ./
-    network_mode: "host"
-    command: ros2 run asv_sensors mock_imu --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT}
-
-  mock_power_level:
-    build: ./
-    network_mode: "host"
-    command: ros2 run asv_sensors mock_power_level --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT}
-
-  foxglove_bridge:
-    build:
-      dockerfile: ./Dockerfile.foxglove
-    ports:
-      - "8765:8765"
+include:
+  - docker-compose.sensor-drivers.yml
+  - docker-compose.mocks.yml
+  - docker-compose.foxglove.yml
+    
