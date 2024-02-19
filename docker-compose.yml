@@ -1,23 +1,5 @@
-version: '3'
-
-services:
-  packet_publisher:
-    build: ./
-    ports:
-      - "62001:62001/udp"
-    command: ros2 run asv_sensors packet_publisher
-
-  imu_sensor_driver:
-    build: ./
-    command: ros2 run asv_sensors imu_sensor_driver
-
-  mock_imu:
-    build: ./
-    network_mode: "host"
-    command: ros2 run asv_sensors mock_imu
-
-  foxglove_bridge:
-    build: 
-      dockerfile: ./Dockerfile.foxglove
-    ports:
-      - "8765:8765"
+include:
+  - docker-compose.sensor-drivers.yml
+  - docker-compose.mocks.yml
+  - docker-compose.foxglove.yml
+    

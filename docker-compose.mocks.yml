@@ -1,0 +1,10 @@
+services:
+  mock_imu:
+    build: ./
+    network_mode: "host"
+    command: ros2 run asv_sensors mock_imu --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT}
+
+  mock_power_level:
+    build: ./
+    network_mode: "host"
+    command: ros2 run asv_sensors mock_power_level --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT}

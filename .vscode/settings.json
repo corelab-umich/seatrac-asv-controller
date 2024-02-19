@@ -77,5 +77,15 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "regex": "cpp"
-    }
+    },
+    "python.autoComplete.extraPaths": [
+        "/home/ubuntu/asv-ros-sim/install/messages/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/ubuntu/asv-ros-sim/install/messages/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
 }

@@ -1,0 +1,14 @@
+services:
+  packet_publisher:
+    build: ./
+    ports:
+      - "${UDP_PORT}:${UDP_PORT}/udp"
+    command: ros2 run asv_sensors packet_publisher --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT}
+
+  imu_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors imu_sensor_driver
+
+  power_level_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors power_level_sensor_driver 

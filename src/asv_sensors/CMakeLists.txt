@@ -14,12 +14,16 @@ find_package(std_msgs REQUIRED)
 find_package(asv_utils REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(asv_messages REQUIRED)
+find_package(messages REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_executable(mock_imu src/MockIMU.cpp)
+add_executable(mock_imu src/mocks/MockIMU.cpp)
 ament_target_dependencies(mock_imu PUBLIC rclcpp asv_utils asv_messages)
+
+add_executable(mock_power_level src/mocks/MockPowerLevel.cpp)
+ament_target_dependencies(mock_power_level PUBLIC rclcpp asv_utils asv_messages)
 
 add_executable(packet_publisher src/SensorPacketPublisher.cpp include/asv_sensors/SensorPacketPublisher.h)
 target_include_directories(packet_publisher PRIVATE include/)
@@ -29,10 +33,16 @@ add_executable(imu_sensor_driver src/ImuSensorDriver.cpp include/asv_sensors/Imu
 target_include_directories(imu_sensor_driver PRIVATE include/)
 ament_target_dependencies(imu_sensor_driver PUBLIC rclcpp asv_utils std_msgs sensor_msgs tf2 asv_messages)
 
+add_executable(power_level_sensor_driver src/PowerLevelSensorDriver.cpp include/asv_sensors/PowerLevelSensorDriver.h)
+target_include_directories(power_level_sensor_driver PRIVATE include/)
+ament_target_dependencies(power_level_sensor_driver PUBLIC rclcpp std_msgs asv_messages messages)
+
 install(TARGETS
   mock_imu
   packet_publisher
   imu_sensor_driver
+  mock_power_level
+  power_level_sensor_driver
   DESTINATION lib/${PROJECT_NAME}
 )
 
