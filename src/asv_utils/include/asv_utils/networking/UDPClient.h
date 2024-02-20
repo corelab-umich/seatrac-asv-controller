@@ -24,7 +24,7 @@ public:
    * @param max_buffer_size sets the max packet size able to be read by this UDPClient. Any captured packet greater than
    * this size is truncated.
    */
-  UDPClient(const std::string& ip_address, int port, size_t max_buffer_size)
+  UDPClient(const std::string& ip_address, unsigned short port, size_t max_buffer_size)
     : recv_buffer_(max_buffer_size), ip_address_(ip_address), port_(port){};
 
   // TODO (aspratap): change to accepy multiple handlers instead of single one
@@ -48,7 +48,7 @@ private:
   std::vector<unsigned char> recv_buffer_;
   boost::asio::ip::udp::endpoint remote_endpoint_;
   std::string ip_address_;
-  int port_;
+  unsigned short  port_;
   MessageReceiver* handler_obj_;
 };
 }  // namespace asv::networking

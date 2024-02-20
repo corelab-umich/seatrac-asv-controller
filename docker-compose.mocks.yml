@@ -8,3 +8,8 @@ services:
     build: ./
     network_mode: "host"
     command: ros2 run asv_sensors mock_power_level --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT}
+
+  mock_attitude:
+    build: ./
+    network_mode: "host"
+    command: ros2 run asv_sensors mock_attitude --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT}

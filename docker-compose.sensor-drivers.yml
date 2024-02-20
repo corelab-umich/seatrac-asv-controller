@@ -12,3 +12,7 @@ services:
   power_level_sensor_driver:
     build: ./
     command: ros2 run asv_sensors power_level_sensor_driver 
+  
+  attitude_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors attitude_sensor_driver 
