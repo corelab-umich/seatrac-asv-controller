@@ -2,6 +2,9 @@
 
 #include <math.h>
 #include <stdexcept>
+#include <cstring>
+#include <array>
+#include <algorithm>
 
 namespace asv::utils
 {
@@ -32,12 +35,39 @@ short to_short(const unsigned char* buf, bool little_endian)
   return (short)temp;
 }
 
+double to_double(const unsigned char* buf, bool little_endian)
+{
+  double out = 0;
+  if (little_endian)
+  {
+    std::array<unsigned char, 8> rev{};
+    std::reverse_copy(buf, buf + 8, rev.begin());
+    memcpy(&out, rev.data(), 8);
+  }
+  else
+  {
+    memcpy(&out, buf, 8);
+  }
+
+  return out;
+}
+
 float to_radians(float degrees)
 {
   return degrees * M_PI / 180;
 }
 
 float to_degrees(float radians)
+{
+  return radians / M_PI * 180;
+}
+
+double to_radians(double degrees)
+{
+  return degrees * M_PI / 180;
+}
+
+double to_degrees(double radians)
 {
   return radians / M_PI * 180;
 }

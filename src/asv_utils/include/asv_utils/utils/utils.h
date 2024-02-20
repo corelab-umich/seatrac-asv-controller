@@ -29,6 +29,16 @@ unsigned short to_ushort(const unsigned char* buf, bool little_endian = true);
 short to_short(const unsigned char* buf, bool little_endian = true);
 
 /**
+ * @brief reads the first 8 elements of the specified char buffer and translates
+ * them into a double
+ * @param buf pointer to a unsigned char buffer containing data to translate.
+ * First 8 elements are read.
+ * @param little_endian endian-ness of the data in the buf. true by default
+ * @return parsed double
+ */
+double to_double(const unsigned char* buf, bool little_endian = true);
+
+/**
  * @brief converts degrees to radians
  * @param degrees angle in degrees
  * @return angle in radians
@@ -41,6 +51,21 @@ float to_radians(float degrees);
  * @return angle in degrees
  */
 float to_degrees(float radians);
+
+/**
+ * @brief converts radians to degrees
+ * @param radians angle in radians
+ * @return angle in degrees
+ */
+double to_degrees(double radians);
+
+/**
+ * @brief converts degrees to radians
+ * @param degrees angle in degrees
+ * @return angle in radians
+ */
+double to_radians(double degrees);
+
 
 /**
  * @brief converts the provided short into into a byte buffer

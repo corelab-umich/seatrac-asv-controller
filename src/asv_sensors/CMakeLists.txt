@@ -44,11 +44,16 @@ add_executable(attitude_sensor_driver src/AttitudeSensorDriver.cpp include/asv_s
 target_include_directories(attitude_sensor_driver PRIVATE include/)
 ament_target_dependencies(attitude_sensor_driver PUBLIC rclcpp std_msgs asv_messages messages)
 
+add_executable(gps_sensor_driver src/GPSSensorDriver.cpp include/asv_sensors/GPSSensorDriver.h)
+target_include_directories(gps_sensor_driver PRIVATE include/)
+ament_target_dependencies(gps_sensor_driver PUBLIC rclcpp std_msgs asv_messages sensor_msgs)
+
 install(TARGETS
   packet_publisher
   imu_sensor_driver
   power_level_sensor_driver
   attitude_sensor_driver
+  gps_sensor_driver
   mock_imu
   mock_power_level
   mock_attitude
