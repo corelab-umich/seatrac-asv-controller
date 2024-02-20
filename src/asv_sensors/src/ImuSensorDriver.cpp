@@ -28,8 +28,8 @@ void ImuSensorDriver::callback(const std_msgs::msg::ByteMultiArray::SharedPtr ra
   if (raw_data->data.size() != asv::messages::ImuMessage::buffer_size ||
       raw_data->data[SINK_ID_BYTE_INDEX] != asv::messages::ImuMessage::sink_id)
   {
-    std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
-              << std::endl;
+    // std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
+            //   << std::endl;
     return;
   }
 

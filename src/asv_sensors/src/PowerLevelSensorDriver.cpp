@@ -23,8 +23,8 @@ void PowerLevelSensorDriver::callback(const std_msgs::msg::ByteMultiArray::Share
   if (raw_data->data.size() != asv::messages::PowerLevelMessage::buffer_size ||
       raw_data->data[SINK_ID_BYTE_INDEX] != asv::messages::PowerLevelMessage::sink_id)
   {
-    std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
-              << std::endl;
+    // std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
+    //           << std::endl;
     return;
   }
 

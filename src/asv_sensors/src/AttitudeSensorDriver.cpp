@@ -23,8 +23,8 @@ void AttitudeSensorDriver::callback(const std_msgs::msg::ByteMultiArray::SharedP
   if (raw_data->data.size() != asv::messages::AttitudeMessage::buffer_size ||
       raw_data->data[SINK_ID_BYTE_INDEX] != asv::messages::AttitudeMessage::sink_id)
   {
-    std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
-              << std::endl;
+    // std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
+    //           << std::endl;
     return;
   }
 

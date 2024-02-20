@@ -20,7 +20,7 @@ SensorPacketPublisher::SensorPacketPublisher() : Node("sensor_packet_publisher")
 
 void SensorPacketPublisher::handle_message(const unsigned char* buf, size_t buf_size)
 {
-  std::cout << "Received packet # " << ++count_ << " with size of " << buf_size << " bytes.\n";
+  // std::cout << "Received packet # " << ++count_ << " with size of " << buf_size << " bytes.\n";
   std_msgs::msg::ByteMultiArray msg{};
   msg.data = std::vector<unsigned char>{ buf, buf + buf_size };
   // leave msg.layout empty since this isn't a multidimensional array.
