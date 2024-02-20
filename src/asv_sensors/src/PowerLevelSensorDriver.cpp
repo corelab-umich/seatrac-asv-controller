@@ -19,7 +19,7 @@ PowerLevelSensorDriver::PowerLevelSensorDriver() : Node("power_level_sensor_driv
 
 void PowerLevelSensorDriver::callback(const std_msgs::msg::ByteMultiArray::SharedPtr raw_data)
 {
-  // check if the packet received is actually an IMU message packet
+  // check if the packet received is actually an power level message packet
   if (raw_data->data.size() != asv::messages::PowerLevelMessage::buffer_size ||
       raw_data->data[SINK_ID_BYTE_INDEX] != asv::messages::PowerLevelMessage::sink_id)
   {

@@ -38,7 +38,7 @@ std::vector<unsigned char> PowerLevelMessage::encode()
   // sync byte 2
   out.push_back(0xFF);
   // (length) in little endian
-  out.push_back(0x33);
+  out.push_back(0x27);
   out.push_back(0x00);
   // (relay)
   out.push_back(0xFF);
