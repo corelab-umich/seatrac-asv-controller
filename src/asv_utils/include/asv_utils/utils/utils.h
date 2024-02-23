@@ -84,6 +84,14 @@ std::vector<unsigned char> short_to_bytes(short num, bool little_endian = true);
 std::vector<unsigned char> ushort_to_bytes(unsigned short num, bool little_endian = true);
 
 /**
+ * @brief converts the provided double into into a byte buffer
+ * @param num double to convert
+ * @param little_endian endian-ness of the data to encode. true by default
+ * @return byte buffer populated with provided double
+ */
+std::vector<unsigned char> double_to_bytes(double num, bool little_endian = true);
+
+/**
  * @brief generates checksum bytes for when encoded message as per SeaTrac
  * specifications
  * @param buf source buffer for generating checksum. checksum bytes will be appended to end of this buffer as well.

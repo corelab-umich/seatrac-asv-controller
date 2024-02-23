@@ -9,6 +9,15 @@
 namespace asv::utils
 {
 
+/**
+ * Is this machine little endian?
+ */
+int isLittleEndian()
+{
+  int i = 1;
+  return *((char*)&i);
+}
+
 unsigned short to_ushort(const unsigned char* buf, bool little_endian)
 {
   unsigned short out = 0;
@@ -37,16 +46,17 @@ short to_short(const unsigned char* buf, bool little_endian)
 
 double to_double(const unsigned char* buf, bool little_endian)
 {
+  bool machine_little_endian = isLittleEndian() == 1;
   double out = 0;
-  if (little_endian)
+  if (little_endian == machine_little_endian)
+  {
+    memcpy(&out, buf, 8);
+  }
+  else
   {
     std::array<unsigned char, 8> rev{};
     std::reverse_copy(buf, buf + 8, rev.begin());
     memcpy(&out, rev.data(), 8);
-  }
-  else
-  {
-    memcpy(&out, buf, 8);
   }
 
   return out;
@@ -85,6 +95,19 @@ std::vector<unsigned char> ushort_to_bytes(unsigned short num, bool little_endia
   {
     out.push_back((num >> 8) & 0xFF);
     out.push_back((num)&0xFF);
+  }
+
+  return out;
+}
+
+std::vector<unsigned char> double_to_bytes(double num, bool little_endian)
+{
+  bool machine_little_endian = isLittleEndian() == 1;
+  unsigned char *num_buf = (unsigned char *) &num;
+  auto out = std::vector<unsigned char>(num_buf, num_buf + 8);
+  if (little_endian != machine_little_endian)
+  {
+    std::reverse(out.begin(), out.end());
   }
 
   return out;
