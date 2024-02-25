@@ -15,8 +15,12 @@ services:
   
   attitude_sensor_driver:
     build: ./
-    command: ros2 run asv_sensors attitude_sensor_driver --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    command: ros2 run asv_sensors attitude_sensor_driver   --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
 
   gps_sensor_driver:
     build: ./
     command: ros2 run asv_sensors gps_sensor_driver --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+
+  wind_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors wind_sensor_driver --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL} 
