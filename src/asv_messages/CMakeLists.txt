@@ -14,7 +14,7 @@ find_package(ament_cmake REQUIRED)
 find_package(asv_utils REQUIRED)
 
 # set(MESSAGES_HEADER_FILES include/messages/DatetimeMessage.h include/messages/ImuMessage.h)
-set(MESSAGES_SRC_FILES src/DatetimeMessage.cpp src/ImuMessage.cpp src/PowerLevelMessage.cpp src/AttitudeMessage.cpp)
+set(MESSAGES_SRC_FILES src/DatetimeMessage.cpp src/ImuMessage.cpp src/PowerLevelMessage.cpp src/AttitudeMessage.cpp src/GPSMessage.cpp)
 
 add_library(asv_messages ${MESSAGES_SRC_FILES})
 target_include_directories(asv_messages

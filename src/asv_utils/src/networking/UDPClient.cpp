@@ -29,7 +29,7 @@ void UDPClient::handle_receive(const boost::system::error_code& error, size_t by
 {
   if (error)
   {
-    std::cout << "Receive failed: " << error.message() << "\n";
+    std::cerr << "Receive failed: " << error.message() << "\n";
   }
   else
   {

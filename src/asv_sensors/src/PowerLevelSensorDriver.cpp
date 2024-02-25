@@ -23,10 +23,10 @@ void PowerLevelSensorDriver::callback(const std_msgs::msg::ByteMultiArray::Share
   if (raw_data->data.size() != asv::messages::PowerLevelMessage::buffer_size ||
       raw_data->data[SINK_ID_BYTE_INDEX] != asv::messages::PowerLevelMessage::sink_id)
   {
-    // std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
-    //           << std::endl;
     return;
   }
+
+  RCLCPP_DEBUG(this->get_logger(), "Received new power level message");
 
   auto asv_power_level_msg = asv::messages::PowerLevelMessage::decode(raw_data->data.data(), raw_data->data.size());
   auto ros_power_level_msg = ::messages::msg::PowerLevel{};

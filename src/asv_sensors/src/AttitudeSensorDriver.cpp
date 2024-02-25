@@ -23,10 +23,10 @@ void AttitudeSensorDriver::callback(const std_msgs::msg::ByteMultiArray::SharedP
   if (raw_data->data.size() != asv::messages::AttitudeMessage::buffer_size ||
       raw_data->data[SINK_ID_BYTE_INDEX] != asv::messages::AttitudeMessage::sink_id)
   {
-    // std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
-    //           << std::endl;
     return;
   }
+
+  RCLCPP_DEBUG(this->get_logger(), "Received new Attitude message");
 
   auto asv_attitude_msg = asv::messages::AttitudeMessage::decode(raw_data->data.data(), raw_data->data.size());
   auto ros_attitude_msg = ::messages::msg::Attitude{};
