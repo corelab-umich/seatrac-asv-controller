@@ -26,8 +26,6 @@ DatetimeMessage DatetimeMessage::decode(const unsigned char* buf, size_t buf_len
   out.minute = buf[5];
   out.second = buf[6];
   out.hundreths = buf[7];
-
-  std::cout << "year: " << out.year;
   return out;
 }
 

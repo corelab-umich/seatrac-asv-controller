@@ -28,6 +28,9 @@ ament_target_dependencies(mock_power_level PUBLIC rclcpp asv_utils asv_messages)
 add_executable(mock_attitude src/mocks/MockAttitude.cpp)
 ament_target_dependencies(mock_attitude PUBLIC rclcpp asv_utils asv_messages)
 
+add_executable(mock_gps src/mocks/MockGPS.cpp)
+ament_target_dependencies(mock_gps PUBLIC rclcpp asv_utils asv_messages)
+
 add_executable(packet_publisher src/SensorPacketPublisher.cpp include/asv_sensors/SensorPacketPublisher.h)
 target_include_directories(packet_publisher PRIVATE include/)
 ament_target_dependencies(packet_publisher PUBLIC rclcpp asv_utils std_msgs)
@@ -46,7 +49,7 @@ ament_target_dependencies(attitude_sensor_driver PUBLIC rclcpp std_msgs asv_mess
 
 add_executable(gps_sensor_driver src/GPSSensorDriver.cpp include/asv_sensors/GPSSensorDriver.h)
 target_include_directories(gps_sensor_driver PRIVATE include/)
-ament_target_dependencies(gps_sensor_driver PUBLIC rclcpp std_msgs asv_messages sensor_msgs)
+ament_target_dependencies(gps_sensor_driver PUBLIC rclcpp std_msgs asv_messages sensor_msgs messages)
 
 install(TARGETS
   packet_publisher
@@ -57,6 +60,7 @@ install(TARGETS
   mock_imu
   mock_power_level
   mock_attitude
+  mock_gps
   DESTINATION lib/${PROJECT_NAME}
 )
 

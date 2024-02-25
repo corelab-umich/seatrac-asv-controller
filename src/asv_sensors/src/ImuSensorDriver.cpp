@@ -28,10 +28,10 @@ void ImuSensorDriver::callback(const std_msgs::msg::ByteMultiArray::SharedPtr ra
   if (raw_data->data.size() != asv::messages::ImuMessage::buffer_size ||
       raw_data->data[SINK_ID_BYTE_INDEX] != asv::messages::ImuMessage::sink_id)
   {
-    // std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
-            //   << std::endl;
     return;
   }
+
+  RCLCPP_DEBUG_STREAM(this->get_logger(), "Received new IMU message with sink id: " << (int) asv::messages::ImuMessage::sink_id);
 
   auto asv_imu_msg = asv::messages::ImuMessage::decode(raw_data->data.data(), raw_data->data.size());
   auto ros_imu_msg = sensor_msgs::msg::Imu{};

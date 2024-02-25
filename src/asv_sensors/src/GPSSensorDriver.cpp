@@ -17,7 +17,8 @@ GPSSensorDriver::GPSSensorDriver() : Node("gps_sensor_driver")
       "/raw_sensor_packets", rclcpp::SensorDataQoS(),
       std::bind(&GPSSensorDriver::callback, this, std::placeholders::_1));
 
-  gps_msg_pub_ = this->create_publisher<sensor_msgs::msg::NavSatFix>("/gps", rclcpp::SensorDataQoS());
+  nav_sat_msg_pub_ = this->create_publisher<sensor_msgs::msg::NavSatFix>("/nav_sat_fix", rclcpp::SensorDataQoS());
+  asv_gps_msg_pub_ = this->create_publisher<::messages::msg::AsvGps>("/gps", rclcpp::SensorDataQoS());
 }
 
 void GPSSensorDriver::callback(const std_msgs::msg::ByteMultiArray::SharedPtr raw_data)
@@ -26,20 +27,33 @@ void GPSSensorDriver::callback(const std_msgs::msg::ByteMultiArray::SharedPtr ra
   if (raw_data->data.size() != asv::messages::GPSMessage::buffer_size ||
       raw_data->data[SINK_ID_BYTE_INDEX] != asv::messages::GPSMessage::sink_id)
   {
-    std::cout << "size: " << raw_data->data.size() << ", sink id: " << (int)raw_data->data[SINK_ID_BYTE_INDEX]
-              << std::endl;
     return;
   }
 
+  RCLCPP_DEBUG_STREAM(this->get_logger(), "Received new GPS message with sink id: " << (int) asv::messages::GPSMessage::sink_id);
+
   auto asv_gps_msg = asv::messages::GPSMessage::decode(raw_data->data.data(), raw_data->data.size());
-  auto ros_gps_msg = sensor_msgs::msg::NavSatFix{};
+  auto nav_sat_msg = sensor_msgs::msg::NavSatFix{};
 
-  ros_gps_msg.header.stamp = this->now();
+  nav_sat_msg.header.stamp = this->now();
 
-  ros_gps_msg.latitude = to_degrees(asv_gps_msg.lattitude);
-  ros_gps_msg.latitude = to_degrees(asv_gps_msg.lattitude);
+  nav_sat_msg.latitude = to_degrees(asv_gps_msg.latitude);
+  nav_sat_msg.longitude = to_degrees(asv_gps_msg.longitude);
 
-  gps_msg_pub_->publish(ros_gps_msg);
+  nav_sat_msg_pub_->publish(nav_sat_msg);
+
+  auto asv_gps_ros_msg = ::messages::msg::AsvGps{};
+  asv_gps_ros_msg.header.stamp = nav_sat_msg.header.stamp;
+  asv_gps_ros_msg.latitude = asv_gps_msg.latitude;
+  asv_gps_ros_msg.longitude = asv_gps_msg.longitude;
+  asv_gps_ros_msg.kts = asv_gps_msg.kts;
+  asv_gps_ros_msg.heading = asv_gps_msg.heading;
+  asv_gps_ros_msg.current_kts = asv_gps_msg.current_kts;
+  asv_gps_ros_msg.current_heading = asv_gps_msg.current_heading;
+  asv_gps_ros_msg.wind_kts = asv_gps_msg.wind_kts;
+  asv_gps_ros_msg.wind_heading = asv_gps_msg.wind_heading;
+
+  asv_gps_msg_pub_->publish(asv_gps_ros_msg);
 }
 
 }  // namespace asv::ros

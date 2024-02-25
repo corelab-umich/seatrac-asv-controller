@@ -16,27 +16,27 @@ struct GPSMessage
 {
   // current timestamp for message
   DatetimeMessage timestamp;
-  // lattitude in radians
-  double lattitude;  
+  // latitude in radians
+  double latitude;  
   // longitude in radians
   double longitude;
   // speed in knots towards target (always positive)
-  float knots;
+  float kts;
   // heading towards target (always positive)
   float heading;
   // current speed in knots (always positive)
-  float current_knots;
+  float current_kts;
   // heading (always positive)
   float current_heading;
   // wind speed in knots (always positive)
-  float wind_knots;
+  float wind_kts;
   // wind heading (always positive)
   float wind_heading;
 
   // size of data section of udp packet (no udp header info) send by boat (inlcudes checksum and header bytes)
   static const size_t buffer_size{ 45 };
-  // sink id for message
-  static const unsigned char sink_id{ 77 };
+  // sink id for message (80 is backup, 77 is regular)
+  static const unsigned char sink_id{ 80 };
 
   /**
    * @brief Parses the provided byte buffer according to the SeaTrac GPS udp
