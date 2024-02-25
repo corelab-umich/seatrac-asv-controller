@@ -18,6 +18,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/AsvImu.msg"
   "msg/PowerLevel.msg"
   "msg/Attitude.msg"
+  "msg/Wind.msg"
   DEPENDENCIES std_msgs
 )
 

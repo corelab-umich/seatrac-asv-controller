@@ -28,6 +28,9 @@ ament_target_dependencies(mock_power_level PUBLIC rclcpp asv_utils asv_messages)
 add_executable(mock_attitude src/mocks/MockAttitude.cpp)
 ament_target_dependencies(mock_attitude PUBLIC rclcpp asv_utils asv_messages)
 
+add_executable(mock_wind src/mocks/MockWind.cpp)
+ament_target_dependencies(mock_wind PUBLIC rclcpp asv_utils asv_messages)
+
 add_executable(packet_publisher src/SensorPacketPublisher.cpp include/asv_sensors/SensorPacketPublisher.h)
 target_include_directories(packet_publisher PRIVATE include/)
 ament_target_dependencies(packet_publisher PUBLIC rclcpp asv_utils std_msgs)
@@ -44,14 +47,20 @@ add_executable(attitude_sensor_driver src/AttitudeSensorDriver.cpp include/asv_s
 target_include_directories(attitude_sensor_driver PRIVATE include/)
 ament_target_dependencies(attitude_sensor_driver PUBLIC rclcpp std_msgs asv_messages messages)
 
+add_executable(wind_sensor_driver src/WindSensorDriver.cpp include/asv_sensors/WindSensorDriver.h)
+target_include_directories(wind_sensor_driver PRIVATE include/)
+ament_target_dependencies(wind_sensor_driver PUBLIC rclcpp std_msgs asv_messages messages)
+
 install(TARGETS
   packet_publisher
   imu_sensor_driver
   power_level_sensor_driver
   attitude_sensor_driver
+  wind_sensor_driver
   mock_imu
   mock_power_level
   mock_attitude
+  mock_wind
   DESTINATION lib/${PROJECT_NAME}
 )
 
