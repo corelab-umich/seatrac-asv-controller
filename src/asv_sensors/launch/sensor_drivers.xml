@@ -4,4 +4,5 @@
   <node pkg="asv_sensors" exec="mock_imu" name="mock_imu"/>
   <node pkg="asv_sensors" exec="power_level_sensor_driver" name="power_level_sensor_driver"/>
   <node pkg="asv_sensors" exec="mock_power_level" name="mock_power_level"/>
+  <node pkg="asv_sensors" exec="measurement_packet_publisher" name="measurement_packet_publisher"/>
 </launch>

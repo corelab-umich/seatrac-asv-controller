@@ -1,6 +1,7 @@
 // system headers
 #include <chrono>
 #include <cmath>
+#include <random>
 
 // other headers
 #include <asv_utils/networking/UDPSender.h>
@@ -14,6 +15,9 @@ using namespace asv::networking;
 
 #define LOCALHOST "127.0.0.2"
 #define PORT 62002
+
+std::default_random_engine generator;
+std::normal_distribution<double> distribution(0.0,1.0);
 
 class MockWind : public rclcpp::Node
 {
@@ -32,7 +36,8 @@ private:
     asv::messages::WindMessage wind_msg{};
     count_++;
 
-    wind_msg.apparent_speed = std::abs(std::sin(count_ * M_PI / 3));
+    // wind_msg.apparent_speed = std::abs(std::sin(count_ * M_PI / 3));
+    wind_msg.apparent_speed = M_PI + distribution(generator);
     wind_msg.apparent_angle = std::cos(count_ * M_PI / 4);
     wind_msg.temperature = std::sin(count_ * M_PI / 5);
     wind_msg.pressure = std::cos(count_ * M_PI / 6);
