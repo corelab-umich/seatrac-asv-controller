@@ -1,0 +1,4 @@
+services:
+  julia_install:
+    build:
+      dockerfile: ./Dockerfile.julia

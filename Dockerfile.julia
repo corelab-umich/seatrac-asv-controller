@@ -1,0 +1,9 @@
+ARG OVERLAY_WS=/opt/ros/overlay_ws
+FROM julia:latest
+
+WORKDIR $OVERLAY_WS
+
+COPY juliadeps/install.jl .
+COPY juliadeps/Project.toml .
+
+RUN julia install.jl
