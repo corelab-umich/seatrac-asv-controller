@@ -11,7 +11,9 @@ class JuliaPublisher(Node):
         super().__init__('julia_publisher')
 
         """ SOC Controller Testing"""
+        self.get_logger().info('Initializing juliatest node')
         self.soc_controller = jl.include("src/asv_controller/jl_src/SOC_Controller.jl")
+        self.get_logger().info('Imported soc controller')
         dt_sec = 2.5
         dt_min = dt_sec/(60.0)
         self.dt_hrs = dt_sec/(60.0 * 60.0)
