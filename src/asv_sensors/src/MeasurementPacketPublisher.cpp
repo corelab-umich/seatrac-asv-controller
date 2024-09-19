@@ -23,7 +23,6 @@ typedef struct
 } wind_data;
 
 
-
 class MeasurementPacketPublisher : public rclcpp::Node
 {
 public:
