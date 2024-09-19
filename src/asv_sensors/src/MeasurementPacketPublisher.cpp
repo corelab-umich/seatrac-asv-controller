@@ -48,8 +48,8 @@ private:
         // RCLCPP_DEBUG(this->get_logger(), "Received Wind sensor message");
         RCLCPP_DEBUG(this->get_logger(), "Wind Speed: %f", ros_wind_msg.apparent_speed);
 
-        //TODO: weight the constants min((sample_time/tau), 1)
-        filtered_data.speed = (sample_time/tau) * ros_wind_msg.apparent_speed + (1 - (sample_time/tau)) * filtered_data.speed;
+        double filter_weight = std::min((sample_time/tau), double(1));
+        filtered_data.speed = filter_weight * ros_wind_msg.apparent_speed + (1 - filter_weight) * filtered_data.speed;
         filtered_data.angle = ros_wind_msg.apparent_angle;
         filtered_data.temperature = ros_wind_msg.temperature;
         filtered_data.pressure = ros_wind_msg.pressure;
