@@ -1,5 +1,5 @@
 import rclpy
-from rclpy.node import node
+from rclpy.node import Node
 from juliacall import Main as jl
 import numpy as np
 
@@ -7,17 +7,17 @@ from std_msgs.msg import String
 
 class JuliaPublisher(Node):
 
-    def __init__(Node):
+    def __init__(self):
         super().__init__('julia_publisher')
 
         """ SOC Controller Testing"""
-        self.soc_controller = jl.include("jl_src/SOC_Controller.jl")
+        self.soc_controller = jl.include("src/asv_controller/jl_src/SOC_Controller.jl")
         dt_sec = 2.5
         dt_min = dt_sec/(60.0)
         self.dt_hrs = dt_sec/(60.0 * 60.0)
         T_begin = 9.0
         T_end = 12.0
-        self.ts_hrs = [T_begin + i * dt_Hrs for i in range(int((T_end - T_begin)/ dt_hrs) + 1)]
+        self.ts_hrs = [T_begin + i * self.dt_hrs for i in range(int((T_end - T_begin)/ self.dt_hrs) + 1)]
 
         """ ROS Publisher"""
         self.publisher_ = self.create_publisher(String, 'julia_msg', 10)
@@ -27,11 +27,11 @@ class JuliaPublisher(Node):
     
     def timer_callback(self):
 
-        lcbf = self.soc_controller.compute_lcbf(self.ts_hrs, self.dt_hrs)
+        ucbf = self.soc_controller.compute_ucbf(self.ts_hrs, self.dt_hrs)
         msg = String()
-        msg.data = String(lcbf[2])
+        msg.data = str(ucbf[self.i])
         self.publisher_.publish(msg)
-        self.get_logger().info('Publishing: "$s"' % msg.data)
+        self.get_logger().info('Publishing: "%s"' % msg.data)
         self.i += 1
 
 def main(args=None):

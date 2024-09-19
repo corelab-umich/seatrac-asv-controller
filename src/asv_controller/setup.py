@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'julia_publisher = asv_controller.juliatest:main'
+            'julia_publisher = asv_controller.juliatest:main',
         ],
     },
 )
