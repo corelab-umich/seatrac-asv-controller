@@ -20,19 +20,19 @@ RUN mkdir -p /tmp/opt && \
 # multi-stage for building
 FROM $FROM_IMAGE AS builder
 
-# install pip and overlay dependencies
+# install overlay dependencies
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS
-RUN apt-get update && apt-get install -y python3-pip  # Install pip
+RUN apt-get update && apt-get install -y python3-pip
 COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
-COPY requirements.txt ./  # Copy the requirements file
+COPY deps/py_requirements.txt .
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     apt-get update && apt-get install -y\ 
     && rosdep install -y \
       --from-paths \
         src \
       --ignore-src \
-    && pip3 install -r requirements.txt \  # Use pip3 to install Python packages
+    && pip3 install -r py_requirements.txt \
     && rm -rf /var/lib/apt/lists/*
 
 # build overlay source
