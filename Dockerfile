@@ -20,10 +20,14 @@ RUN mkdir -p /tmp/opt && \
 # multi-stage for building
 FROM $FROM_IMAGE AS builder
 
+ENV TZ=US/Eastern
+ENV DEBIAN_FRONTEND=noninteractive 
+
 # install overlay dependencies
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS
 RUN apt-get update && apt-get install -y python3-pip
+RUN apt-get update && apt-get install -y tzdata
 COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
 COPY deps/py_requirements.txt .
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \

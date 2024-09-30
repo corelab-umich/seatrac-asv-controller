@@ -2,6 +2,8 @@ import rclpy
 from rclpy.node import Node
 from juliacall import Main as jl
 import numpy as np
+from datetime import datetime
+from tzlocal import get_localzone
 
 from std_msgs.msg import String
 
@@ -9,6 +11,9 @@ class JuliaPublisher(Node):
 
     def __init__(self):
         super().__init__('julia_publisher')
+
+        """ Timezone/Clock Setup """
+        self.local_tz = get_localzone()
 
         """ SOC Controller Testing"""
         self.get_logger().info('Initializing juliatest node')
@@ -20,6 +25,20 @@ class JuliaPublisher(Node):
         T_begin = 9.0
         T_end = 12.0
         self.ts_hrs = [T_begin + i * self.dt_hrs for i in range(int((T_end - T_begin)/ self.dt_hrs) + 1)]
+        
+        """ Generate Synthetic Data """
+        # sigma_t = 2.0
+        # sigma_s = 1.0
+        # lt = 0.75 * 60.0 # minutes
+        # ls = 0.75 # km
+
+        # kt = jl.Matern(1/2, sigma_t, lt)
+        # ks = jl.Matern(1/2, sigma_s, ls)
+        # dx = 0.1
+        # xs = np.arange(0, 1.4 + dx, dx)
+        # ys = np.arange(0, 6.5 + dx, dx)
+
+        # synthetic_data = jl.STGPKF.generate_spatiotemporal_process(xs, ys, dt_min, (T_end - T_begin)*60.0, ks, kt)
 
         """ ROS Publisher"""
         self.publisher_ = self.create_publisher(String, 'julia_msg', 10)
@@ -29,12 +48,33 @@ class JuliaPublisher(Node):
     
     def timer_callback(self):
 
-        ucbf = self.soc_controller.compute_ucbf(self.ts_hrs, self.dt_hrs)
+        # ucbf = self.soc_controller.compute_ucbf(self.ts_hrs, self.dt_hrs)
         msg = String()
-        msg.data = str(ucbf[self.i])
+        # msg.data = str(ucbf[self.i])
+        now = datetime.now(self.local_tz)
+        day_of_year = self.get_day_of_year(now)
+        fractional_hour = self.get_fractional_hours(now)
+        self.get_logger().info(f"Day of year: {day_of_year:.2f}")
+        msg.data = str(fractional_hour)
+        # self.get_logger().info(f"Time: {fractional_hour:.6f}")
         self.publisher_.publish(msg)
         self.get_logger().info('Publishing: "%s"' % msg.data)
         self.i += 1
+
+    def get_day_of_year(self, now):
+        """
+            Return the current day of the year as a numerical value from 1-366
+        """
+        return float(now.timetuple().tm_yday)
+
+    def get_fractional_hours(self, now):
+        """
+            Return the current time as a fractional hour (hrs.decimal)
+        """
+        hours = now.hour
+        minutes_fraction = now.minute / 60.0
+        seconds_fraction = now.second / 3600.0
+        return hours + minutes_fraction + seconds_fraction
 
 def main(args=None):
     rclpy.init(args=args)

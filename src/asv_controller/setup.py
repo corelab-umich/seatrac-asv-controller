@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'julia_publisher = asv_controller.juliatest:main',
+            'asv_ergo_control = asv_controller.AsvErgoControl:main'
         ],
     },
 )

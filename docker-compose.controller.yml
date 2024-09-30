@@ -2,3 +2,6 @@ services:
   julia_test:
     build: ./
     command: ros2 run asv_controller julia_publisher  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+  asv_ergo_control:
+    build: ./
+    command: ros2 run asv_controller asv_ergo_control  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}

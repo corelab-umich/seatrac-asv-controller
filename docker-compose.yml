@@ -4,4 +4,3 @@ include:
   - docker-compose.mocks.yml
   - docker-compose.controller.yml
   - docker-compose.foxglove.yml
-    
