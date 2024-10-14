@@ -2,6 +2,12 @@ module Variograms
 
 using LinearAlgebra, LsqFit, StatsBase, DataFrames
 
+struct MeasurementSpatial{T, P, F}
+    t::T
+    p::P # [x, y]
+    y::F
+  end
+
 # Function to calculate pairwise distances
 function pairwise_distances(measurements)
     n = length(measurements)
