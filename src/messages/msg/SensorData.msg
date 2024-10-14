@@ -1,5 +1,9 @@
+# Vehicle Position/States
 float64 latitude
 float64 longitude
 float64 stateofcharge
-int64 courseoverground
-int64 speedoverground
+float64 courseoverground
+float64 speedoverground
+
+# Wind Measurement
+float64 windspeed

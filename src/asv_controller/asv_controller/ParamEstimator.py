@@ -2,6 +2,8 @@ import rclpy
 from rclpy.node import Node
 from juliacall import Main as jl
 import numpy as np
+from datetime import datetime
+from tzlocal import get_localzone
 
 from messages.msg import Commands, SensorData, ParamEst
 
@@ -9,6 +11,9 @@ class ParamEstimator(Node):
 
     def __init__(self):
         super().__init__('param_estimator')
+
+        """ Timezone/Clock Setup """
+        self.local_tz = get_localzone()
 
         """ Instantiate Variogram Module """
         # Create python instance of Julia variogram functions
@@ -37,8 +42,6 @@ class ParamEstimator(Node):
     
     def timed_estimator(self):
         self.get_logger().debug('Estimating New Parameters')
-        """ Aggregate Measurements """
-        
 
         """ Create and publish message with parameter estimates """
         msg = ParamEst()
@@ -52,15 +55,25 @@ class ParamEstimator(Node):
 
     def measurement_aggregator(self, msg):
         """ Convert lat/long to x/y positions """
+        # TODO: Replace with actual message data
+        jl.position = [1.3, 2.2]
 
-        jl.time = msg.
+        """ Get current time """
+        now = datetime.now(self.local_tz)
+        fractional_hour = self.get_fractional_hours(now)
+        jl.time = fractional_hour
+
+        """ Get current wind speed """
+        # TODO: Replace with live sensor data
+        # jl.speed = msg.speedoverground
+        jl.speed = 2.0
 
         """ Push sensor data into Measurement Struct """
         jl.seval("push!(measurements, MeasurementSpatial(time, position, speed))")
 
         pass
 
-def main(args=None):""
+def main(args=None):
     rclpy.init(args=args)
     
     estimator = ParamEstimator()
