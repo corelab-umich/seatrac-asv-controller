@@ -6,39 +6,52 @@ from datetime import datetime
 from tzlocal import get_localzone
 
 from std_msgs.msg import String
+from messages.msg import Commands, SensorData
 
 class JuliaPublisher(Node):
 
     def __init__(self):
         super().__init__('julia_publisher')
 
+        jl.seval("using Pkg; Pkg.instantiate()")
+
         """ Timezone/Clock Setup """
         self.local_tz = get_localzone()
 
-        """ SOC Controller Testing"""
-        self.get_logger().info('Initializing juliatest node')
-        self.soc_controller = jl.include("src/asv_controller/jl_src/SOC_Controller.jl")
-        self.get_logger().info('Imported soc controller')
-        dt_sec = 2.5
-        dt_min = dt_sec/(60.0)
-        self.dt_hrs = dt_sec/(60.0 * 60.0)
-        T_begin = 9.0
-        T_end = 12.0
-        self.ts_hrs = [T_begin + i * self.dt_hrs for i in range(int((T_end - T_begin)/ self.dt_hrs) + 1)]
+        # """ SOC Controller Testing"""
+        # self.get_logger().info('Initializing juliatest node')
+        # self.soc_controller = jl.include("src/asv_controller/jl_src/SOC_Controller.jl")
+        # self.get_logger().info('Imported soc controller')
+        # dt_sec = 2.5
+        # dt_min = dt_sec/(60.0)
+        # self.dt_hrs = dt_sec/(60.0 * 60.0)
+        # T_begin = 9.0
+        # T_end = 12.0
+        # self.ts_hrs = [T_begin + i * self.dt_hrs for i in range(int((T_end - T_begin)/ self.dt_hrs) + 1)]
         
         """ Generate Synthetic Data """
-        # sigma_t = 2.0
-        # sigma_s = 1.0
-        # lt = 0.75 * 60.0 # minutes
-        # ls = 0.75 # km
+        sigma_t = 2.0
+        sigma_s = 1.0
+        lt = 0.75 * 60.0 # minutes
+        ls = 0.75 # km
 
-        # kt = jl.Matern(1/2, sigma_t, lt)
-        # ks = jl.Matern(1/2, sigma_s, ls)
-        # dx = 0.1
-        # xs = np.arange(0, 1.4 + dx, dx)
-        # ys = np.arange(0, 6.5 + dx, dx)
+        kt = jl.Matern(1/2, sigma_t, lt)
+        ks = jl.Matern(1/2, sigma_s, ls)
+        dx = 0.1
+        xs = np.arange(0, 1.4 + dx, dx)
+        ys = np.arange(0, 6.5 + dx, dx)
 
-        # synthetic_data = jl.STGPKF.generate_spatiotemporal_process(xs, ys, dt_min, (T_end - T_begin)*60.0, ks, kt)
+        synthetic_data = jl.STGPKF.generate_spatiotemporal_process(xs, ys, dt_min, (T_end - T_begin)*60.0, ks, kt)
+
+        """ Subscribe to Sensor Data """
+        self.subscription = self.create_subscription(
+            Commands,
+            'asv_command',
+            self.sim_update,
+            10)
+        self.subscription  # prevent unused variable warning
+
+        self.synth_publisher_ = self.create_publisher(SensorData, 'measurement_packet', 10)
 
         """ ROS Publisher"""
         self.publisher_ = self.create_publisher(String, 'julia_msg', 10)
@@ -60,6 +73,15 @@ class JuliaPublisher(Node):
         self.publisher_.publish(msg)
         self.get_logger().info('Publishing: "%s"' % msg.data)
         self.i += 1
+
+    def sim_update(self, msg, heading):
+        """ Update Position """
+        new_data = SensorData()
+        new_data.pose_x = msg.pose_x + msg.speed*np.cos(np.radians(heading))
+        new_data.pose_y = msg.pose_y + msg.speed*np.sin(np.radians(heading))
+        new_data.windspeed = self.synthetic_data(msg.pose_x, msg.pose_y, self.get_fractional_hours(now))
+        self.synth_publisher_.publish(new_data)
+
 
     def get_day_of_year(self, now):
         """

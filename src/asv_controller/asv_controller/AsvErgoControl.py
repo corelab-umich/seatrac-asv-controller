@@ -10,6 +10,8 @@ class ASVErgoControl(Node):
     def __init__(self):
         super().__init__('asv_ergo_control')
 
+        """ Declare User Parameters """
+
         """ SOC Controller """
         # Create python instance of Julia SOC Controller
         self.get_logger().debug('Initializing SOC Controller')

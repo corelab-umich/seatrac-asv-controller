@@ -15,6 +15,13 @@ class ParamEstimator(Node):
         """ Timezone/Clock Setup """
         self.local_tz = get_localzone()
 
+        """ Declare User Parameters """
+        self.declare_parameter('manual_hyperparam_override', False)
+        self.declare_parameter('spatial_length', 0.0)
+        self.declare_parameter('temporal_length', 0.0)
+        self.declare_parameter('spatial_deviation', 0.0)
+        self.declare_parameter('temporal_deviation', 0.0)
+
         """ Instantiate Variogram Module """
         # Create python instance of Julia variogram functions
         self.get_logger().debug('Initializing Param Estimator')
@@ -26,6 +33,7 @@ class ParamEstimator(Node):
         jl.seval("time = 0.0")
         jl.seval("speed = 0.0")
         self.jlstore = jl.seval("(k, v) -> (@eval $(Symbol(k)) = $v; return)")
+        self.jlstore("measure_vec_size", 60*30)
 
         """ Subscribe to Sensor Data """
         self.subscription = self.create_subscription(
@@ -43,19 +51,25 @@ class ParamEstimator(Node):
     def timed_estimator(self):
         self.get_logger().debug('Estimating New Parameters')
 
+        """ Estimate Parameters """
+        params = self.variograms.hp_fit(self.measurements)
+
         """ Create and publish message with parameter estimates """
         msg = ParamEst()
-        msg.spatial_length = 0.0
+        msg.spatial_length = params[1]
+        msg.temporal_length = params[2]
+        msg.temporal_deviation = np.sqrt(params[0])
+        msg.spatial_deviation = np.sqrt(params[0])
         self.publisher_.publish(msg)
 
         """ Remove oldest measurement """
         if len(self.measurements) >= (60*30):
-            jl.seval("popfirst!(measurements)")
+            jl.seval("measurements = [length(measurements) - measure_vec_size:end]")
         pass
 
     def measurement_aggregator(self, msg):
         """ Convert lat/long to x/y positions """
-        # TODO: Replace with actual message data
+        # jl.position = [msg.pose_x, msg.pose_y]
         jl.position = [1.3, 2.2]
 
         """ Get current time """
@@ -64,8 +78,7 @@ class ParamEstimator(Node):
         jl.time = fractional_hour
 
         """ Get current wind speed """
-        # TODO: Replace with live sensor data
-        # jl.speed = msg.speedoverground
+        # jl.speed = msg.windspeed
         jl.speed = 2.0
 
         """ Push sensor data into Measurement Struct """
