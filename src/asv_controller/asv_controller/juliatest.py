@@ -13,8 +13,6 @@ class JuliaPublisher(Node):
     def __init__(self):
         super().__init__('julia_publisher')
 
-        jl.seval("using Pkg; Pkg.instantiate()")
-
         """ Timezone/Clock Setup """
         self.local_tz = get_localzone()
 

@@ -1,4 +1,5 @@
 services:
-  julia_install:
-    build:
-      dockerfile: ./Dockerfile.julia
+  test:
+    build: .
+    command: bash
+    tty: true

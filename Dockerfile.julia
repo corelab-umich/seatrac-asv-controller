@@ -7,4 +7,5 @@ COPY deps/install.jl .
 COPY deps/Project.toml .
 # COPY deps/Project.toml ~/.julia/environments/v1.11/
 
-RUN julia install.jl
+# RUN julia --project install.jl
+# RUN julia
