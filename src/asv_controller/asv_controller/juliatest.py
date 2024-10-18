@@ -16,16 +16,24 @@ class JuliaPublisher(Node):
         """ Timezone/Clock Setup """
         self.local_tz = get_localzone()
 
+        """ Julia Imports """
+        # Creating variable storage function
+        self.jlstore = jl.seval("(k, v) -> (@eval $(Symbol(k)) = $v; return)")
+
+        # Importing packages
+        jl.seval("using SpatiotemporalGPs")
+
+        # Importing modules
+        self.soc_controller = jl.include("src/asv_controller/jl_src/SOC_Controller.jl")
+
         # """ SOC Controller Testing"""
-        # self.get_logger().info('Initializing juliatest node')
-        # self.soc_controller = jl.include("src/asv_controller/jl_src/SOC_Controller.jl")
-        # self.get_logger().info('Imported soc controller')
-        # dt_sec = 2.5
-        # dt_min = dt_sec/(60.0)
-        # self.dt_hrs = dt_sec/(60.0 * 60.0)
-        # T_begin = 9.0
-        # T_end = 12.0
-        # self.ts_hrs = [T_begin + i * self.dt_hrs for i in range(int((T_end - T_begin)/ self.dt_hrs) + 1)]
+        dt_sec = 2.5
+        dt_min = dt_sec/(60.0)
+        self.dt_hrs = dt_sec/(60.0 * 60.0)
+        self.dt_hrs = self.jlstore("")
+        T_begin = 9.0
+        T_end = 12.0
+        self.ts_hrs = [T_begin + i * self.dt_hrs for i in range(int((T_end - T_begin)/ self.dt_hrs) + 1)]
         
         """ Generate Synthetic Data """
         sigma_t = 2.0
