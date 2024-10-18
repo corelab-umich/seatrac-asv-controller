@@ -1,0 +1,12 @@
+{
+    "julia": "1.11.1",
+    "packages": {
+        "AbstractGPs": {
+            "uuid": "99985d1d-32ba-4be9-9821-2ec096f28918"
+        }, 
+        "SpatiotemporalGPs": {
+            "uuid": "73b3b457-46a4-4dae-aece-b1ff83e37843", 
+            "url": "https://github.com/dev10110/SpatiotemporalGPs.jl"
+        }
+    }
+}

@@ -52,15 +52,16 @@ class ParamEstimator(Node):
         self.get_logger().debug('Estimating New Parameters')
 
         """ Estimate Parameters """
-        params = self.variograms.hp_fit(self.measurements)
+        if len(self.measurements) >= 100:
+            params = self.variograms.hp_fit(self.measurements)
 
-        """ Create and publish message with parameter estimates """
-        msg = ParamEst()
-        msg.spatial_length = params[1]
-        msg.temporal_length = params[2]
-        msg.temporal_deviation = np.sqrt(params[0])
-        msg.spatial_deviation = np.sqrt(params[0])
-        self.publisher_.publish(msg)
+            """ Create and publish message with parameter estimates """
+            msg = ParamEst()
+            msg.spatial_length = params[1]
+            msg.temporal_length = params[2]
+            msg.temporal_deviation = np.sqrt(params[0])
+            msg.spatial_deviation = np.sqrt(params[0])
+            self.publisher_.publish(msg)
 
         """ Remove oldest measurement """
         if len(self.measurements) >= (60*30):
