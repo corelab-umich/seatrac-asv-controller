@@ -83,6 +83,15 @@ function batterymodel!(boat, dayOfYear, time, lat, vel, soc, dt)
     return soc_est;
 end
 
+function batterymodel(dayOfYear, time, lat, vel, soc, dt)
+    # Solar Insolation returns in kW
+    p_in = max(0,SolarInsolation(dayOfYear, time, lat))* 1000 * boat.panel_area * boat.panel_efficiency;
+    p_out = boat.k_h + boat.k_m * (vel^3);
+    soc_est = soc + (p_in - p_out)*dt; # power update in Wh
+    soc_est = min(soc_est, boat.b_max); # cap charge at soc_max
+    return soc_est;
+end
+
 function powermodel!(boat, dayOfYear, time, lat, vel, soc, dt)
     # Solar Insolation returns in kW
     p_in = max(0,SolarInsolation(dayOfYear, time, lat))* 1000 * boat.panel_area * boat.panel_efficiency;

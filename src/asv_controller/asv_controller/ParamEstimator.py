@@ -7,20 +7,45 @@ from tzlocal import get_localzone
 
 from messages.msg import Commands, SensorData, ParamEst
 
+from rclpy.parameter import Parameter
+from rcl_interfaces.msg import SetParametersResult
+
 class ParamEstimator(Node):
+
+    def parameter_callback(self, params):
+        for param in params:
+            if param.name == 'manual_hyperparam_override' and param.type_ == Parameter.Type.BOOL:
+                self.manual_param_override = param.value
+            if param.name == 'spatial_length' and param.type_ == Parameter.Type.DOUBLE:
+                self.spatial_length = param.value
+            if param.name == 'temporal_length' and param.type_ == Parameter.Type.DOUBLE:
+                self.temporal_length = param.value
+            if param.name == 'spatial_deviation' and param.type_ == Parameter.Type.DOUBLE:
+                self.spatial_deviation = param.value
+            if param.name == 'temporal_deviation' and param.type_ == Parameter.Type.DOUBLE:
+                self.temporal_deviation = param.value
+        return SetParametersResult(successful=True)
 
     def __init__(self):
         super().__init__('param_estimator')
-
+      
         """ Timezone/Clock Setup """
         self.local_tz = get_localzone()
 
         """ Declare User Parameters """
         self.declare_parameter('manual_hyperparam_override', False)
+        self.manual_param_override = False
         self.declare_parameter('spatial_length', 0.0)
+        self.spatial_length = 0.0
         self.declare_parameter('temporal_length', 0.0)
+        self.temporal_length = 0.0
         self.declare_parameter('spatial_deviation', 0.0)
+        self.spatial_deviation = 0.0
         self.declare_parameter('temporal_deviation', 0.0)
+        self.temporal_deviation = 0.0
+
+        """ Parameter Update Function """
+        self.add_on_set_parameters_callback(self.parameter_callback)
 
         """ Instantiate Variogram Module """
         # Create python instance of Julia variogram functions
@@ -57,10 +82,16 @@ class ParamEstimator(Node):
 
             """ Create and publish message with parameter estimates """
             msg = ParamEst()
-            msg.spatial_length = params[1]
-            msg.temporal_length = params[2]
-            msg.temporal_deviation = np.sqrt(params[0])
-            msg.spatial_deviation = np.sqrt(params[0])
+            if self.manual_param_override:
+                msg.spatial_length = self.spatial_length
+                msg.temporal_length = self.temporal_length
+                msg.temporal_deviation = self.temporal_deviation
+                msg.spatial_deviation = self.spatial_deviation
+            else:
+                msg.spatial_length = params[1]
+                msg.temporal_length = params[2]
+                msg.temporal_deviation = np.sqrt(params[0])
+                msg.spatial_deviation = np.sqrt(params[0])
             self.publisher_.publish(msg)
 
         """ Remove oldest measurement """
@@ -70,8 +101,7 @@ class ParamEstimator(Node):
 
     def measurement_aggregator(self, msg):
         """ Convert lat/long to x/y positions """
-        # jl.position = [msg.pose_x, msg.pose_y]
-        jl.position = [1.3, 2.2]
+        jl.position = [msg.pose_x, msg.pose_y]
 
         """ Get current time """
         now = datetime.now(self.local_tz)
@@ -79,13 +109,29 @@ class ParamEstimator(Node):
         jl.time = fractional_hour
 
         """ Get current wind speed """
-        # jl.speed = msg.windspeed
-        jl.speed = 2.0
+        jl.speed = msg.windspeed
 
         """ Push sensor data into Measurement Struct """
-        jl.seval("push!(measurements, MeasurementSpatial(time, position, speed))")
+        measure_struct = self.variograms.MeasurementSpatial(jl.time, jl.position, jl.speed)
+        self.jlstore("measure_struct", measure_struct)
+        jl.seval("push!(measurements, measure_struct)")
 
         pass
+
+    def get_day_of_year(self, now):
+        """
+            Return the current day of the year as a numerical value from 1-366
+        """
+        return float(now.timetuple().tm_yday)
+
+    def get_fractional_hours(self, now):
+        """
+            Return the current time as a fractional hour (hrs.decimal)
+        """
+        hours = now.hour
+        minutes_fraction = now.minute / 60.0
+        seconds_fraction = now.second / 3600.0
+        return hours + minutes_fraction + seconds_fraction
 
 def main(args=None):
     rclpy.init(args=args)

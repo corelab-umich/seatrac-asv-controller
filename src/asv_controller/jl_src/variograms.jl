@@ -6,7 +6,7 @@ struct MeasurementSpatial{T, P, F}
     t::T
     p::P # [x, y]
     y::F
-  end
+end
 
 # Function to calculate pairwise distances
 function pairwise_distances(measurements)
