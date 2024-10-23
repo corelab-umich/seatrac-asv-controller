@@ -152,6 +152,7 @@ class JuliaPublisher(Node):
             except:
                 self.get_logger().error('Battery Model Failure')
                             
+            new_data.stateofcharge = self.state_of_charge
             """ Update Windspeed """
             self.get_logger().debug('Interpolating wind data')
             try:

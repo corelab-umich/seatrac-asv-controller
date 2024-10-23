@@ -22,6 +22,10 @@ class ASVErgoControl(Node):
                 self.controller_enable = param.value
                 if self.controller_enable:
                     self.controller_init()
+            if param.name == 'mission_duration_hrs' and param.type_ == Parameter.Type.DOUBLE:
+                self.mission_duration_hrs = param.value
+            if param.name == 'terminal_soc' and param.type_ == Parameter.Type.DOUBLE:
+                self.terminal_soc = param.value
             if param.name == 'speed_kp' and param.type_ == Parameter.Type.DOUBLE:
                 self.kp = param.value
             if param.name == 'speed_ki' and param.type_ == Parameter.Type.DOUBLE:
@@ -39,12 +43,18 @@ class ASVErgoControl(Node):
         """ Declare User Parameters """
         self.declare_parameter('controller_enable', False)
         self.controller_enable = False
+        self.declare_parameter('mission_duration_hrs', 3.0)
+        self.mission_duration_hrs = 3.0
+        self.declare_parameter('terminal_soc', 3000.0)
+        self.terminal_soc = 3000.0
         self.declare_parameter('speed_kp', 0.5)
         self.kp = 0.5
         self.declare_parameter('speed_ki', 0.01)
         self.ki = 0.01
         self.declare_parameter('speed_kd', 0.5)
         self.kd = 0.5
+        # TODO: Add Speed & Heading Override Parameters
+        # TODO: Make rated speed a parameter
 
         """ Parameter Update Function """
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -66,6 +76,7 @@ class ASVErgoControl(Node):
         self.vario = jl.include("src/asv_controller/jl_src/variograms.jl")
         self.boundary_avoid = jl.include("src/asv_controller/jl_src/Convex_bound_avoidance.jl")
         self.control_class = jl.include("src/asv_controller/jl_src/Controller.jl")
+        self.sim_vars = jl.include("src/asv_controller/jl_src/simulator_ST.jl")
 
         """ Subscribe to Sensor Data """
         self.subscription = self.create_subscription(
@@ -78,7 +89,7 @@ class ASVErgoControl(Node):
         self.position_xy = None
 
         """ SOC Controller Variables """
-        # Define variables
+        # Time variables
         self.dt_sec = 2.5
         # dt_min = self.dt_sec/(60.0)
         self.dt_hrs = self.dt_sec/(60.0 * 60.0)
@@ -92,7 +103,30 @@ class ASVErgoControl(Node):
         self.error = 0.0
 
         """ Ergodic Controller Variables """
+        # KF Variables
+        self.stgpkfprob = None
+        self.kt = None
+        self.ks = None
+        self.dx = None
+        self.xs = None
+        self.ys = None
+        self.grid_points = None
+        self.ngpkf_grid = None
+        self.ergo_grid = None
+        self.stgpkf_state = None
 
+        # KF Estimates
+        self.M = None
+        self.w_hat = None
+        self.qs = None
+        self.ergo_q_map = None
+
+        # Clarity matrix and functions
+        self.target_q = 0.95
+        self.target_q_matrix = None
+
+        # Rated Speed
+        self.w_rated = 2.25 # TODO: Make a parameter
 
         """ Control Loop on Timer """
         self.publisher_ = self.create_publisher(Commands, 'asv_command', 10)
@@ -106,22 +140,33 @@ class ASVErgoControl(Node):
         """ Compute control if enabled """
         if self.controller_enable:
             """ Compute Speed Command """
-            speed, target_soc = self.speed_controller()
-            self.get_logger().info('Compute Speed {speed}')
+            try:
+                speed, target_soc = self.speed_controller()
+                self.get_logger().info('Compute Speed {speed}')
+            except:
+                speed = 0.0
+                target_soc = -6908.00
+                self.get_logger().error('Speed Controller Error')
 
             """ Get speeds from ergo controller """
-            # TODO: Call actual ergodic controller
-            # self.control_class.ergo_controller_weighted_2()
-            
+            try:
+                speed_x, speed_y = self.ergo_controller(speed)
+                self.get_logger().info('Speed_x: {speed_x}, Speed_y: {speed_y}')
+            except:
+                speed_x = speed
+                speed_y = 0.0
+                self.get_logger().error('Ergodic Controller Error')
 
-            
             """ Convert speeds to heading """
-            # heading = heading_calc(4,3)
+            try:
+                heading = heading_calc(speed_x, speed_y)
+            except:
+                heading = 0
+                self.get_logger().error('Heading Calculation Error')
 
             """ Publish message with control command """
-            
             msg.speed_kts = speed * K_MS2KTS
-            # msg.heading = heading
+            msg.heading = heading
             msg.target_bat_soc = target_soc
             self.publisher_.publish(msg)
         else:
@@ -133,24 +178,95 @@ class ASVErgoControl(Node):
     def controller_init(self):
         self.get_logger().debug('Initializing Controller')
 
+        """ Initialize SOC Controller"""
+
         # Define variables
+        self.get_logger().debug('Initializing SOC Controller')
         now = datetime.now(self.local_tz)
         day_of_year = self.get_day_of_year(now)
         self.T_begin = self.get_fractional_hours(now)
-        self.T_end = self.T_begin + 3.0 # TODO: Make this adjustable
+        self.T_end = self.T_begin + self.mission_duration_hrs
         self.ts_hrs = [self.T_begin + i * self.dt_hrs for i in range(int((self.T_end - self.T_begin)/ self.dt_hrs) + 1)]
         soc_begin = self.state_of_charge
-        soc_end = soc_begin - 500 # TODO: Make this a value that is initialized based on T_end
+        soc_end = self.terminal_soc
+        # TODO: Create a reference plot for SOC vs Time under ideal case to determine final SOC target
 
         # Compute SOC barriers and target profile
         ucbf = self.soc_controller.compute_ucbf(self.ts_hrs, self.dt_hrs)
         lcbf = self.soc_controller.compute_lcbf(self.ts_hrs, self.dt_hrs)
-        self.soc_target = self.soc_controller.generate_SOC_target(lcbf, ucbf, soc_begin, soc_end, self.ts_hrs, self.dt_hrs)
+        try:
+            self.soc_target = self.soc_controller.generate_SOC_target(lcbf, ucbf, soc_begin, soc_end, self.ts_hrs, self.dt_hrs)
+            self.get_logger().debug('Generated SOC Target: {self.soc_target[2]}')
+        except:
+            self.get_logger().error('Failed to generate SOC Target')
+            controller_disable = Parameter('controller_enable', Parameter.Type.BOOL, False)
+            self.set_parameters([controller_disable])
+            return
+        
+        """ Initialize Ergodic Controller """
+        self.get_logger().debug('Initializing Ergodic Controller')
+        try:
+            # Hyperparameter Initialization
+            sigma_t = 2.0
+            sigma_s = 1.0
+            lt = 0.75 * 60.0 # minutes
+            ls = 0.75 # km
 
-        self.get_logger().debug('Generated SOC Target: {self.soc_target[2]}')
-        # Initialize ergodic control
+            # Create domain arrays
+            self.kt = self.jlstore("kt", jl.Matern(1/2, sigma_t, lt))
+            self.ks = self.jlstore("ks", jl.Matern(1/2, sigma_s, ls))
+            self.dx = self.jlstore("dx", 0.10)
+            self.xs = jl.seval("xs = 0:dx:1.4")
+            self.ys = jl.seval("ys = 0:dx:6.5")
 
+            # Create grid point variable
+            self.grid_points = jl.seval("grid_points = vec([@SVector[x, y] for x in xs, y in ys])")
+
+            # Initialize STGPKF Problem
+            self.jlstore("dt_min", self.dt_sec/(60.0))
+            self.stgpkfprob = jl.seval("problem = STGPKFProblem(grid_points, ks, kt, dt_min)")
+
+            # Initialize ngpkf_grid
+            self.ngpkf_grid = jl.seval("ngpkf_grid = NGPKF.NGPKFGrid(xs, ys, ks)")
+
+            # Initialize target clarity matrix
+            jl.seval("Nx, Ny = length(xs), length(ys)")
+            self.w_rated = self.jlstore("w_rated", 2.25)
+            self.M = jl.seval("M = ones(Nx, Ny) * w_rated")
+            self.ergo_grid = jl.seval("ergo_grid = SimulatorST.ErgoGrid(ngpkf_grid, (256,256))")
+
+            # Initialize STGPKF Problem and get first estimate
+            self.stgpkf_state = jl.seval("state = stgpkf_initialize(problem)")
+            jl.seval("est = STGPKF.get_estimate(problem, state)")
+            self.w_hat = jl.seval("w_hat = reshape(est, length(xs), length(ys))")
+
+            # Initialize Clarity Map
+            self.qs = jl.seval("qs = STGPKF.get_estimate_clarity(problem, state)")
+            jl.seval("q_map = reshape(qs, length(xs), length(ys))")
+            jl.ergo_q_map = jl.seval("ergo_q_map = SimulatorST.ngpkf_to_ergo(ngpkf_grid, ergo_grid, q_map)")
+            
+            # Initialize trajectory
+            jl.seval("traj = @SVector[0.0, 0.0]")
+        except:
+            self.get_logger().error("Ergodic Initialization Failed")
         pass
+
+    def ergo_controller(self, speed):
+        self.jlstore("current_x", self.position_xy[0])
+        self.jlstore("current_y", self.position_xy[1])
+        pose = jl.seval("pose = [@SVector[current_x, current_y] for i=1:1]")
+
+        jl.seval("push!(traj, pose)")
+
+        speeds, new_q_target = self.Controller.ergo_controller_weighted_2(pose, self.M, self.w_rated, self.domain.convex_polygon, self.target_q, self.Nx, self.Ny, self.xs, self.ys, ngpkf_grid=ngpkf_grid,
+        ergo_grid=ergo_grid,
+        ergo_q_map=ergo_q_map,
+        traj=traj,
+        umax=speed)
+
+        self.q_target = new_q_target
+        
+        return speeds[0], speeds[1]
 
     def speed_controller(self):
         # Get current SOC level - TODO: Implement this routine
@@ -168,7 +284,6 @@ class ASVErgoControl(Node):
         difference = self.error - prev_error
         speed = self.kp*self.error + self.ki*self.error_sum + self.kd*difference
         speed = max(self.soc_controller.boat.v_min, min(speed, self.soc_controller.boat.v_max))
-        self.get_logger().debug('Computed Speed Command: {speed}')
         return speed, target_soc
     
     def measurement_aggregator(self, msg):
@@ -192,9 +307,9 @@ class ASVErgoControl(Node):
         return hours + minutes_fraction + seconds_fraction
 
    
-    # def heading_calc(self, ux, uy):
-    #     heading = np.arctan2(uy, ux) * (180/np.pi)
-    #     return (heading + 360) % 360
+    def heading_calc(self, ux, uy):
+        heading = np.arctan2(uy, ux) * (180/np.pi)
+        return (heading + 360) % 360
 
 def main(args=None):
     rclpy.init(args=args)

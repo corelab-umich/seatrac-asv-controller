@@ -1,6 +1,12 @@
 module Controller
 
-# using ErgodicController
+using LinearAlgebra, Random, Statistics, StaticArrays, Interpolations, LazySets, SpatiotemporalGPs, LinearInterpolations, StatsBase
+
+include("jordan_lake_domain.jl")
+include("kf.jl")
+include("ngpkf.jl")
+include("ergodic.jl")
+include("Convex_bound_avoidance.jl")
 
 struct BoatState
     position_x::Float64
@@ -26,7 +32,48 @@ struct InformationEstimate
     wind_y::Matrix
 end
 
-function ergo_controller_weighted_2(t, xs, Mean, w_rated_val, convex_polygon;
+sigma_t = 2.0
+sigma_s = 1.0
+lt = 0.75 * 60.0 # minutes
+ls = 0.75 # km
+kern = Matern(1/2, sigma_s, ls)
+dt = 2.5
+
+# function create_target_q_matrix(xs, ys, target_q_mat)
+#     for i in 1:length(xs)
+#         for j in 1:length(ys)
+#             p = [xs[i], ys[j]]
+#             if p ∈ JordanLakeDomain.convex_polygon.polygon
+#                 target_q_mat[i, j] = 0.95
+#             end
+#         end
+#     end
+# end
+
+function Cfun(p, x)
+    return kern(x, p)^2 / kern(p, p)
+end
+
+function Rfun(p, x)
+    return (kern(x,x) - kern(x, p)^2 / kern(p, p) + 0.5^2)/(dt)
+end
+
+C_ = Cfun(0,0)
+R_ = Rfun(0,0)
+
+k = (C_^2 / R_)
+
+function Clarity_delta_t(current_clarity, target_clarity)
+    delta_t = (target_clarity - current_clarity) / ((target_clarity - 1) * k * (current_clarity - 1))
+    return delta_t
+end
+
+function Clarity_delta_new(current_clarity, target_clarity)
+    den = -target_clarity*k + k*current_clarity*target_clarity + k - k*current_clarity
+    return delta_t = (target_clarity - current_clarity) / den
+end
+
+function ergo_controller_weighted_2(xs, Mean, w_rated_val, convex_polygon, target_q, Nx, Ny, x_domain, y_domain;
     ergo_grid,
     ergo_q_map,
     traj,
@@ -35,10 +82,7 @@ function ergo_controller_weighted_2(t, xs, Mean, w_rated_val, convex_polygon;
     kwargs...
     )
     
-    target_q = 0.95
-
     # Set the rated value matrix    
-    Nx, Ny = length(synthetic_data.xs), length(synthetic_data.ys)
     w_rated = ones(Nx, Ny)
     w_rated *= w_rated_val
 
@@ -49,11 +93,6 @@ function ergo_controller_weighted_2(t, xs, Mean, w_rated_val, convex_polygon;
 
 
     # Mask the matrix such that q_target is zero outisde the domain
-    # x_domain = range(0, 1.4, length=Nx)
-    # y_domain = range(0, 6.5, length=Ny)
-    x_domain = synthetic_data.xs
-    y_domain = synthetic_data.ys
-
     for i in 1:length(x_domain)
         for j in 1:length(y_domain)
             p = [x_domain[i], y_domain[j]]

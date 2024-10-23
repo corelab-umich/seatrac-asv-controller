@@ -95,6 +95,7 @@ class ParamEstimator(Node):
             self.publisher_.publish(msg)
 
         """ Remove oldest measurement """
+        # TODO: Make the measurement window a parameter
         if len(self.measurements) >= (60*30):
             jl.seval("measurements = [length(measurements) - measure_vec_size:end]")
         pass
