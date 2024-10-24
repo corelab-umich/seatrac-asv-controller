@@ -2,11 +2,12 @@ module Controller
 
 using LinearAlgebra, Random, Statistics, StaticArrays, Interpolations, LazySets, SpatiotemporalGPs, LinearInterpolations, StatsBase
 
-include("jordan_lake_domain.jl")
-include("kf.jl")
-include("ngpkf.jl")
-include("ergodic.jl")
-include("Convex_bound_avoidance.jl")
+# include("jordan_lake_domain.jl")
+# include("kf.jl")
+# include("ngpkf.jl")
+# include("ergodic.jl")
+# include("Convex_bound_avoidance.jl")
+using ..JordanLakeDomain, ..KF, ..NGPKF, ..ErgodicController, ..ConvexBoundAvoidance
 
 struct BoatState
     position_x::Float64
@@ -78,7 +79,6 @@ function ergo_controller_weighted_2(xs, Mean, w_rated_val, convex_polygon, targe
     ergo_q_map,
     traj,
     umax= 0.15, #30.0 * 60 / 1000,
-    ΔT,
     kwargs...
     )
     
@@ -96,7 +96,7 @@ function ergo_controller_weighted_2(xs, Mean, w_rated_val, convex_polygon, targe
     for i in 1:length(x_domain)
         for j in 1:length(y_domain)
             p = [x_domain[i], y_domain[j]]
-            if (p ∈ convex_polygon.polygon) == false
+            if (p ∈ JordanLakeDomain.convex_polygon.polygon) == false
                 q_target_temp[i, j] = 0.0
             end
         end
@@ -108,7 +108,7 @@ function ergo_controller_weighted_2(xs, Mean, w_rated_val, convex_polygon, targe
 
 
     target_spatial_dist = zeros(size(ergo_q_map))
-    Qp  = mean(σ_t.^2) # diagm(vec(σ_t .^2 * fuse_measurements_every_ΔT ))      
+    # Qp  = mean(sigma_t.^2) # diagm(vec(σ_t .^2 * fuse_measurements_every_ΔT ))      
 
     for i in CartesianIndices(target_spatial_dist)
         if q_target_weighted[i] > ergo_q_map[i]

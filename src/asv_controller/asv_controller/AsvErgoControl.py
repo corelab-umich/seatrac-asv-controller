@@ -114,6 +114,8 @@ class ASVErgoControl(Node):
         self.ngpkf_grid = None
         self.ergo_grid = None
         self.stgpkf_state = None
+        self.Nx = None
+        self.Ny = None
 
         # KF Estimates
         self.M = None
@@ -142,24 +144,23 @@ class ASVErgoControl(Node):
             """ Compute Speed Command """
             try:
                 speed, target_soc = self.speed_controller()
-                self.get_logger().info('Compute Speed {speed}')
             except:
                 speed = 0.0
                 target_soc = -6908.00
                 self.get_logger().error('Speed Controller Error')
 
             """ Get speeds from ergo controller """
+            
             try:
-                speed_x, speed_y = self.ergo_controller(speed)
-                self.get_logger().info('Speed_x: {speed_x}, Speed_y: {speed_y}')
+               speed_x, speed_y = self.ergo_controller(speed)
             except:
-                speed_x = speed
-                speed_y = 0.0
-                self.get_logger().error('Ergodic Controller Error')
+               speed_x = speed
+               speed_y = 0.0
+               self.get_logger().error('Ergodic Controller Error')
 
             """ Convert speeds to heading """
             try:
-                heading = heading_calc(speed_x, speed_y)
+                heading = self.heading_calc(speed_x, speed_y)
             except:
                 heading = 0
                 self.get_logger().error('Heading Calculation Error')
@@ -231,22 +232,33 @@ class ASVErgoControl(Node):
 
             # Initialize target clarity matrix
             jl.seval("Nx, Ny = length(xs), length(ys)")
-            self.w_rated = self.jlstore("w_rated", 2.25)
-            self.M = jl.seval("M = ones(Nx, Ny) * w_rated")
-            self.ergo_grid = jl.seval("ergo_grid = SimulatorST.ErgoGrid(ngpkf_grid, (256,256))")
+            self.Nx = jl.seval("Nx")
+            self.Ny = jl.seval("Ny")
+            self.jlstore("w_rated", self.w_rated)
+            jl.seval("M = ones(Nx, Ny) * w_rated")
+            self.M = jl.seval("M")
+            jl.seval("ergo_grid = SimulatorST.ErgoGrid(ngpkf_grid, (256,256))")
+            self.ergo_grid = jl.seval("ergo_grid")
 
             # Initialize STGPKF Problem and get first estimate
-            self.stgpkf_state = jl.seval("state = stgpkf_initialize(problem)")
+            jl.seval("state = stgpkf_initialize(problem)")
+            self.stgpkf_state = jl.seval("state")
             jl.seval("est = STGPKF.get_estimate(problem, state)")
-            self.w_hat = jl.seval("w_hat = reshape(est, length(xs), length(ys))")
+            jl.seval("w_hat = reshape(est, length(xs), length(ys))")
+            self.w_hat = jl.seval("w_hat")
 
             # Initialize Clarity Map
-            self.qs = jl.seval("qs = STGPKF.get_estimate_clarity(problem, state)")
+            jl.seval("qs = STGPKF.get_estimate_clarity(problem, state)")
+            self.qs = jl.seval("qs")
             jl.seval("q_map = reshape(qs, length(xs), length(ys))")
-            jl.ergo_q_map = jl.seval("ergo_q_map = SimulatorST.ngpkf_to_ergo(ngpkf_grid, ergo_grid, q_map)")
+            jl.seval("ergo_q_map = SimulatorST.ngpkf_to_ergo(ngpkf_grid, ergo_grid, q_map)")
+            self.ergo_q_map = jl.seval("ergo_q_map")
+            self.jlstore("target_q", self.target_q)
             
             # Initialize trajectory
-            jl.seval("traj = @SVector[0.0, 0.0]")
+            self.jlstore("current_x", self.position_xy[0])
+            self.jlstore("current_y", self.position_xy[1])
+            jl.seval("coords = [[@SVector[current_x, current_y]]]")
         except:
             self.get_logger().error("Ergodic Initialization Failed")
         pass
@@ -254,17 +266,15 @@ class ASVErgoControl(Node):
     def ergo_controller(self, speed):
         self.jlstore("current_x", self.position_xy[0])
         self.jlstore("current_y", self.position_xy[1])
-        pose = jl.seval("pose = [@SVector[current_x, current_y] for i=1:1]")
+        jl.seval("push!(coords, [@SVector[current_x, current_y]])")
+        jl.seval("traj = vcat(coords...)")
 
-        jl.seval("push!(traj, pose)")
+        self.jlstore("speed", speed)
+        jl.seval("speeds, new_q_target = Controller.ergo_controller_weighted_2(coords[end], M, w_rated, JordanLakeDomain.convex_polygon, target_q, Nx, Ny, xs, ys; ergo_grid=ergo_grid, ergo_q_map=ergo_q_map, traj=traj, umax=speed)")
 
-        speeds, new_q_target = self.Controller.ergo_controller_weighted_2(pose, self.M, self.w_rated, self.domain.convex_polygon, self.target_q, self.Nx, self.Ny, self.xs, self.ys, ngpkf_grid=ngpkf_grid,
-        ergo_grid=ergo_grid,
-        ergo_q_map=ergo_q_map,
-        traj=traj,
-        umax=speed)
 
-        self.q_target = new_q_target
+        self.q_target = jl.seval("new_q_target")
+        speeds = jl.seval("speeds[end]")
         
         return speeds[0], speeds[1]
 

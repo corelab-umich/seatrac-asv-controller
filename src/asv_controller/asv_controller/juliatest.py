@@ -94,8 +94,8 @@ class JuliaPublisher(Node):
         # State variables
         self.latitude = 0.0
         self.longitude = 0.0
-        self.pose_x = 0.0
-        self.pose_y = 0.0
+        self.pose_x = 0.75
+        self.pose_y = 3.0
         self.state_of_charge = 0.0
         self.windspeed = 0.0
         self.sim_time = self.synthetic_data.ts[0]
@@ -159,7 +159,6 @@ class JuliaPublisher(Node):
                 new_data.windspeed = self.synthetic_data.itp(self.pose_x, self.pose_y, self.sim_time)
             except:
                 self.get_logger().error('Wind Interpolation Out Of Bounds')
-            self.get_logger().debug('Measured wind: {new_data.windspeed}')
 
             """ Publish Simulation Update & Synthetic Data """
             self.synth_publisher_.publish(new_data)
