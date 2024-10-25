@@ -78,6 +78,11 @@ class ASVErgoControl(Node):
         self.control_class = jl.include("src/asv_controller/jl_src/Controller.jl")
         self.sim_vars = jl.include("src/asv_controller/jl_src/simulator_ST.jl")
 
+        # JLD2 Saving
+        current_time = datetime.now()
+        time_string = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.filename = f"/root/jld2_files/{time_string}_jlvars.jld2"
+
         """ Subscribe to Sensor Data """
         self.subscription = self.create_subscription(
             SensorData,
@@ -174,6 +179,12 @@ class ASVErgoControl(Node):
             msg.speed_kts = 0.0
             msg.heading = 0.0
             self.publisher_.publish(msg)
+
+        """ Update JLD2 File with workspace vars """
+        # try:
+        #     self.save_all_julia_vars()
+        # except:
+        #     self.get_logger().error('JLD2 Logging Error')
         pass
     
     def controller_init(self):
@@ -320,6 +331,20 @@ class ASVErgoControl(Node):
     def heading_calc(self, ux, uy):
         heading = np.degrees(np.atan2(ux, uy))
         return (heading + 360) % 360
+    
+    def save_all_julia_vars(self):
+        """
+            Function to save all Julia workspace variables to a JLD2 file
+        """
+        # Get all variable names in the Julia `Main` workspace
+        var_names = jl.names(jl.Main, imported=True, all=True)
+        
+        # Create a dictionary with variable names as keys and their values as values
+        vars_dict = {str(var): jl.seval(var) for var in var_names}
+        
+        # Save the dictionary to the JLD2 file
+        jl.JLD2.save(self.filename, vars_dict)
+        pass
 
 def main(args=None):
     rclpy.init(args=args)
