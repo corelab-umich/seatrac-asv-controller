@@ -133,6 +133,7 @@ class JuliaPublisher(Node):
             day_of_year = self.get_day_of_year(now)
             self.sim_time += (self.timer_period / 60.0) # (time step [s] -> min)
 
+
             """ Update Position """
             # Convert speed from kts to ms & pull heading
             speed = self.speed_command * K_KTS2MS
@@ -145,14 +146,15 @@ class JuliaPublisher(Node):
             new_data.pose_x = self.pose_x
             new_data.pose_y = self.pose_y
 
-            """ Update Vehicle State of Charge """
-            # TODO: FIGURE OUT HOW TO GET THIS TO WORK
+            """ Update Vehicle State of Charge """            
             try:
-                self.state_of_charge = self.soc_controller.batterymodel(int(day_of_year), self.sim_time / 60.0, 35.75, speed, self.state_of_charge)
+                self.state_of_charge = self.soc_controller.batterymodel(int(day_of_year), self.sim_time / 60.0, 35.75, speed, self.state_of_charge, self.timer_period / (60.0 * 60.0))
             except:
                 self.get_logger().error('Battery Model Failure')
                             
             new_data.stateofcharge = self.state_of_charge
+
+
             """ Update Windspeed """
             self.get_logger().debug('Interpolating wind data')
             try:
