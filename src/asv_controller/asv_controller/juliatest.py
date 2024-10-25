@@ -141,8 +141,8 @@ class JuliaPublisher(Node):
             heading = self.heading_command
 
             # update x/y position
-            self.pose_x += (speed*np.cos(np.radians(heading))) * self.timer_period * K_M2KM
-            self.pose_y += (speed*np.sin(np.radians(heading))) * self.timer_period * K_M2KM
+            self.pose_x += (speed*np.sin(np.radians(heading))) * self.timer_period * K_M2KM
+            self.pose_y += (speed*np.cos(np.radians(heading))) * self.timer_period * K_M2KM
             new_data.pose_x = self.pose_x
             new_data.pose_y = self.pose_y
 

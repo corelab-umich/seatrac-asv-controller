@@ -318,7 +318,7 @@ class ASVErgoControl(Node):
 
    
     def heading_calc(self, ux, uy):
-        heading = np.arctan2(uy, ux) * (180/np.pi)
+        heading = np.degrees(np.atan2(ux, uy))
         return (heading + 360) % 360
 
 def main(args=None):
