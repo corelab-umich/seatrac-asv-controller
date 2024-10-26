@@ -64,7 +64,7 @@ class ASVErgoControl(Node):
         self.jlstore = jl.seval("(k, v) -> (@eval $(Symbol(k)) = $v; return)")
 
         # Importing packages
-        jl.seval("using LinearAlgebra, Random, Statistics, Plots, StaticArrays, Interpolations, LazySets, SpatiotemporalGPs, JLD2, LinearInterpolations")
+        jl.seval("using LinearAlgebra, Random, Statistics, Plots, StaticArrays, Interpolations, LazySets, SpatiotemporalGPs, JLD2, LinearInterpolations, Dates")
 
         # Importing modules
         self.soc_controller = jl.include("src/asv_controller/jl_src/SOC_Controller.jl")
@@ -82,6 +82,28 @@ class ASVErgoControl(Node):
         current_time = datetime.now()
         time_string = current_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.filename = f"/root/jld2_files/{time_string}_jlvars.jld2"
+        jl.seval("""
+            function save_all_workspace_variables(fname)
+                 
+                group_name = Dates.format(now(), "yyyyMMdd_HH-mm-ss.sSSS")
+                
+                # Collect all non-function, non-module variables from the Main module
+                workspace_vars = Dict(
+                    string(var) => getfield(Main, var)
+                    for var in names(Main, all=true)
+                    if isdefined(Main, var) && !(typeof(getfield(Main, var)) <: Function || typeof(getfield(Main, var)) <: Module)
+                )
+                
+                # Save to a JLD2 file with compression, under a specified group
+                jldopen(fname, "a", compress=true) do fid
+                    group = JLD2.Group(fid, group_name)
+                    for (name, value) in workspace_vars
+                        group[name] = value
+                    end
+                end
+            end
+            """)
+
 
         """ Subscribe to Sensor Data """
         self.subscription = self.create_subscription(
@@ -181,10 +203,8 @@ class ASVErgoControl(Node):
             self.publisher_.publish(msg)
 
         """ Update JLD2 File with workspace vars """
-        # try:
-        #     self.save_all_julia_vars()
-        # except:
-        #     self.get_logger().error('JLD2 Logging Error')
+        jl.save_all_workspace_variables(self.filename)
+
         pass
     
     def controller_init(self):
@@ -272,6 +292,7 @@ class ASVErgoControl(Node):
             jl.seval("coords = [[@SVector[current_x, current_y]]]")
         except:
             self.get_logger().error("Ergodic Initialization Failed")
+        
         pass
 
     def ergo_controller(self, speed):
@@ -331,20 +352,6 @@ class ASVErgoControl(Node):
     def heading_calc(self, ux, uy):
         heading = np.degrees(np.atan2(ux, uy))
         return (heading + 360) % 360
-    
-    def save_all_julia_vars(self):
-        """
-            Function to save all Julia workspace variables to a JLD2 file
-        """
-        # Get all variable names in the Julia `Main` workspace
-        var_names = jl.names(jl.Main, imported=True, all=True)
-        
-        # Create a dictionary with variable names as keys and their values as values
-        vars_dict = {str(var): jl.seval(var) for var in var_names}
-        
-        # Save the dictionary to the JLD2 file
-        jl.JLD2.save(self.filename, vars_dict)
-        pass
 
 def main(args=None):
     rclpy.init(args=args)
