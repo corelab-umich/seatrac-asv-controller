@@ -100,6 +100,18 @@ std::vector<unsigned char> ushort_to_bytes(unsigned short num, bool little_endia
   return out;
 }
 
+std::vector<unsigned char> float_to_bytes(float num, bool little_endian) {
+    bool machine_little_endian = isLittleEndian() == 1;
+    unsigned char *num_buf = (unsigned char *) &num;
+    auto out = std::vector<unsigned char>(num_buf, num_buf + 4);
+    
+    if (little_endian != machine_little_endian) {
+        std::reverse(out.begin(), out.end());
+    }
+
+    return out;
+}
+
 std::vector<unsigned char> double_to_bytes(double num, bool little_endian)
 {
   bool machine_little_endian = isLittleEndian() == 1;

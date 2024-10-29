@@ -203,7 +203,7 @@ class ASVErgoControl(Node):
             self.publisher_.publish(msg)
 
         """ Update JLD2 File with workspace vars """
-        jl.save_all_workspace_variables(self.filename)
+        # jl.save_all_workspace_variables(self.filename)
 
         pass
     

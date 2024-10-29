@@ -8,6 +8,10 @@ services:
     build: ./
     command: ros2 run asv_controller param_estimator --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
 
+  command_publisher:
+    build: ./
+    command: ros2 run asv_sensors control_command_publisher --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+
 # services:
 #   asv_ergo_control:
 #     build: ./
