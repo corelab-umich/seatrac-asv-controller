@@ -7,17 +7,6 @@ services:
   param_estimator:
     build: ./
     command: ros2 run asv_controller param_estimator --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-
   command_publisher:
     build: ./
     command: ros2 run asv_sensors control_command_publisher --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-
-# services:
-#   asv_ergo_control:
-#     build: ./
-#     # volumes:
-#     #   - ./.julia:/root/.julia
-#     command: ros2 run asv_controller asv_ergo_control  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-#   param_estimator:
-#     build: ./
-#     command: ros2 run asv_controller param_estimator --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
