@@ -61,6 +61,10 @@ ament_target_dependencies(wind_sensor_driver PUBLIC rclcpp std_msgs asv_messages
 add_executable(measurement_packet_publisher src/MeasurementPacketPublisher.cpp)
 ament_target_dependencies(measurement_packet_publisher PUBLIC rclcpp std_msgs asv_messages messages)
 
+add_executable(control_command_publisher src/ControlPublisher.cpp)
+target_include_directories(control_command_publisher PRIVATE include/)
+ament_target_dependencies(control_command_publisher PUBLIC rclcpp std_msgs asv_messages messages)
+
 install(TARGETS
   packet_publisher
   imu_sensor_driver
@@ -74,6 +78,7 @@ install(TARGETS
   mock_gps
   mock_wind
   measurement_packet_publisher
+  control_command_publisher
   DESTINATION lib/${PROJECT_NAME}
 )
 
