@@ -1,0 +1,6 @@
+services:
+  foxglove_bridge:
+    build:
+      dockerfile: ./Dockerfile.foxglove
+    ports:
+      - "8765:8765"

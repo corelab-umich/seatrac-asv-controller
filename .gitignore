@@ -55,3 +55,8 @@ CATKIN_IGNORE
 build/
 install/
 log/
+
+.julia/
+.vscode/
+.rosbags/
+.jld2/

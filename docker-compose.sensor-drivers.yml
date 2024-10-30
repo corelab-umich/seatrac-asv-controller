@@ -1,0 +1,37 @@
+services:
+  rosbag_recorder:
+    build: ./
+    command: bash -c "ros2 bag record -a -o /root/rosbags/$(date +%Y%m%d_%H%M%S) --max-bag-duration 1800 --compression-mode file --compression-format zstd"
+    volumes:
+      - ./.rosbags:/root/rosbags  # Bind mount to save bags to host
+
+  packet_publisher:
+    build: ./
+    ports:
+      - "${UDP_PORT}:${UDP_PORT}/udp"
+    command: ros2 run asv_sensors packet_publisher --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+
+  imu_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors imu_sensor_driver --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+
+  power_level_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors power_level_sensor_driver  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+  
+  attitude_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors attitude_sensor_driver   --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+
+  gps_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors gps_sensor_driver --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+
+  wind_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors wind_sensor_driver --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL} 
+
+  measurement_packet_publisher:
+    build: ./
+    command: ros2 run asv_sensors measurement_packet_publisher --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL} 
+

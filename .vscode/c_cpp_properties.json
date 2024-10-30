@@ -1,0 +1,18 @@
+{
+    "configurations": [
+        {
+            "includePath": [
+                "/opt/ros/humble/include/**/**",
+                "/usr/include/**",
+                "./src/*/**/include/**",
+                "./install/messages/include/**",
+            ],
+            "name": "ROS",
+            "intelliSenseMode": "linux-gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17"
+        }
+    ],
+    "version": 4
+}
