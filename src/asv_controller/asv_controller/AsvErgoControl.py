@@ -159,7 +159,7 @@ class ASVErgoControl(Node):
 
         """ Control Loop on Timer """
         self.publisher_ = self.create_publisher(Commands, 'asv_command', 10)
-        timer_period = 0.1 # seconds
+        timer_period = 1 # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
     
     def timer_callback(self):
@@ -198,8 +198,8 @@ class ASVErgoControl(Node):
             msg.target_bat_soc = target_soc
             self.publisher_.publish(msg)
         else:
-            msg.speed_kts = 0.0
-            msg.heading = 0.0
+            msg.speed_kts = 1.0
+            msg.heading = 259.0
             self.publisher_.publish(msg)
 
         """ Update JLD2 File with workspace vars """
