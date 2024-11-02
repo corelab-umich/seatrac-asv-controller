@@ -41,7 +41,7 @@ std::vector<unsigned char> ControlMessage::encode()
   // sync byte 2
   out.push_back(0xFF);
   // (length) in little endian
-  out.push_back(0x0A);
+  out.push_back(0x0B);
   out.push_back(0x00);
   // (relay)
   out.push_back(0x08);
