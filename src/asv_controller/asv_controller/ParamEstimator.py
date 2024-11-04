@@ -35,14 +35,14 @@ class ParamEstimator(Node):
         """ Declare User Parameters """
         self.declare_parameter('manual_hyperparam_override', False)
         self.manual_param_override = False
-        self.declare_parameter('spatial_length', 0.0)
-        self.spatial_length = 0.0
-        self.declare_parameter('temporal_length', 0.0)
-        self.temporal_length = 0.0
-        self.declare_parameter('spatial_deviation', 0.0)
-        self.spatial_deviation = 0.0
-        self.declare_parameter('temporal_deviation', 0.0)
-        self.temporal_deviation = 0.0
+        self.declare_parameter('spatial_length', 2.0)
+        self.spatial_length = 2.0
+        self.declare_parameter('temporal_length', 5.0)
+        self.temporal_length = 5.0
+        self.declare_parameter('spatial_deviation', 1.0)
+        self.spatial_deviation = 1.0
+        self.declare_parameter('temporal_deviation', 1.0)
+        self.temporal_deviation = 1.0
 
         """ Parameter Update Function """
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -70,7 +70,7 @@ class ParamEstimator(Node):
 
         """ Parameter Estimate Publisher"""
         self.publisher_ = self.create_publisher(ParamEst, 'param_estimates', 10)
-        timer_period = 60 # seconds
+        timer_period = 30 # seconds
         self.timer = self.create_timer(timer_period, self.timed_estimator)
     
     def timed_estimator(self):
@@ -78,7 +78,11 @@ class ParamEstimator(Node):
 
         """ Estimate Parameters """
         if len(self.measurements) >= 100:
-            params = self.variograms.hp_fit(self.measurements)
+            try:
+                params = self.variograms.hp_fit(self.measurements)
+            except:
+                params = [self.spatial_deviation * self.temporal_deviation, self.spatial_length, self.temporal_length]
+                self.get_logger().error('Param Estimation Failure')
 
             """ Create and publish message with parameter estimates """
             msg = ParamEst()

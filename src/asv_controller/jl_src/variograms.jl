@@ -144,6 +144,16 @@ function hp_fit(measurements)
     emp_vario = empirical_variogram_st(h, u, γ);
     lags = [emp_vario.h_mid emp_vario.u_mid]
     param_fit = curve_fit(matern12_variogram, lags, emp_vario.variogram, [1.0,2.0,5.0])
+
+    if param_fit.param[1] <= 0 || param_fit.param[1] > 15
+        param_fit.param[1] = 1.0;
+    end
+    if param_fit.param[2] <= 0 || param_fit.param[2] > 50
+        param_fit.param[2] = 2.0;
+    end
+    if param_fit.param[3] <= 0 || param_fit.param[3] > 100
+        param_fit.param[3] = 5.0;
+    end
     return param_fit.param[1], param_fit.param[2], param_fit.param[3]
 end
 
@@ -166,8 +176,10 @@ end
 
 # Function to calculate the empirical variogram
 function empirical_variogram_st(h, u, γ, n_bins=50)
-    h_max = maximum(h)
-    u_max = maximum(u)
+    # h_max = maximum(h)
+    # u_max = maximum(u)
+    h_max = minimum(maximum(h), 10.0)
+    u_max = minimum(maximum(u), 120)
     h_edges = range(0, h_max, length=n_bins+1)
     u_edges = range(0, u_max, length=n_bins+1)
     

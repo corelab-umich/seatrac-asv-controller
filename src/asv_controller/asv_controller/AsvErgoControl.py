@@ -5,7 +5,7 @@ import numpy as np
 from datetime import datetime
 from tzlocal import get_localzone
 
-from messages.msg import Commands, SensorData
+from messages.msg import Commands, SensorData, ParamEst
 
 from rclpy.parameter import Parameter
 from rcl_interfaces.msg import SetParametersResult
@@ -22,6 +22,8 @@ class ASVErgoControl(Node):
                 self.controller_enable = param.value
                 if self.controller_enable:
                     self.controller_init()
+                else:
+                    self.controller_initalized = False
             if param.name == 'mission_duration_hrs' and param.type_ == Parameter.Type.DOUBLE:
                 self.mission_duration_hrs = param.value
             if param.name == 'terminal_soc' and param.type_ == Parameter.Type.DOUBLE:
@@ -115,6 +117,17 @@ class ASVErgoControl(Node):
         self.state_of_charge = None
         self.position_xy = None
 
+        """ Subscribe to Parameter Estimates """
+        self.param_sub = self.create_subscription(
+            ParamEst,
+            'param_estimates',
+            self.param_update,
+            10)
+        self.spatial_length = 0.0
+        self.temporal_length = 0.0
+        self.spatial_deviation = 0.0
+        self.temporal_deviation = 0.0
+
         """ SOC Controller Variables """
         # Time variables
         self.dt_sec = 2.5
@@ -130,6 +143,8 @@ class ASVErgoControl(Node):
         self.error = 0.0
 
         """ Ergodic Controller Variables """
+        self.controller_initalized = False
+
         # KF Variables
         self.stgpkfprob = None
         self.kt = None
@@ -157,9 +172,20 @@ class ASVErgoControl(Node):
         # Rated Speed
         self.w_rated = 2.25 # TODO: Make a parameter
 
+        """ Filter Updates """
+        timer_filter = 5 # seconds
+        self.filter_timer = self.create_timer(timer_filter, self.filter_update)
+
+        # Create array to store measurements for filtering
+        self.jlstore("sigma_meas", 0.25) # TODO: Make adjustable parameter for sensor noise
+        self.sigma_meas = jl.seval("sigma_meas")
+        jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
+        jl.seval("measurement_w = Vector{Float64}()")
+        jl.seval("measure_sigma = sigma_meas")
+
         """ Control Loop on Timer """
         self.publisher_ = self.create_publisher(Commands, 'asv_command', 10)
-        timer_period = 0.5 # seconds
+        timer_period = 1 # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
     
     def timer_callback(self):
@@ -198,8 +224,8 @@ class ASVErgoControl(Node):
             msg.target_bat_soc = target_soc
             self.publisher_.publish(msg)
         else:
-            msg.speed_kts = 1.0
-            msg.heading = 259.0
+            msg.speed_kts = 0.0
+            msg.heading = 0.0
             self.publisher_.publish(msg)
 
         """ Update JLD2 File with workspace vars """
@@ -211,7 +237,6 @@ class ASVErgoControl(Node):
         self.get_logger().debug('Initializing Controller')
 
         """ Initialize SOC Controller"""
-
         # Define variables
         self.get_logger().debug('Initializing SOC Controller')
         now = datetime.now(self.local_tz)
@@ -290,6 +315,13 @@ class ASVErgoControl(Node):
             self.jlstore("current_x", self.position_xy[0])
             self.jlstore("current_y", self.position_xy[1])
             jl.seval("coords = [[@SVector[current_x, current_y]]]")
+
+            # Clear measure vecs
+            jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
+            jl.seval("measurement_w = Vector{Float64}()")
+
+            # Let us know controller finished enabling
+            self.controller_initalized = True
         except:
             self.get_logger().error("Ergodic Initialization Failed")
         
@@ -329,8 +361,65 @@ class ASVErgoControl(Node):
         return speed, target_soc
     
     def measurement_aggregator(self, msg):
+        # Store state of charge
         self.state_of_charge = msg.stateofcharge
+
+        # Store Position
         self.position_xy = [msg.pose_x, msg.pose_y]
+        
+        # Add position to measurement vector for KF
+        self.jlstore("temp_x", self.position_xy[0])
+        self.jlstore("temp_y", self.position_xy[1])
+        jl.seval("push!(measurement_pts, @SVector[temp_x, temp_y])")
+
+        # Add windspeed to measurement vector for KF
+        self.jlstore("temp_speed", msg.windspeed)
+        jl.seval("push!(measurement_w, temp_speed)")
+        # jl.seval("push!(measurement_w, SimulatorST.MeasurementSpatial(1.0, measurement_pts[end], temp_speed))")
+        pass
+
+    def param_update(self, msg):
+        self.spatial_length = msg.spatial_length
+        self.temporal_length = msg.temporal_length
+        self.spatial_deviation = msg.spatial_deviation
+        self.temporal_deviation = msg.temporal_deviation
+
+        # Generate new STGPKF state
+        self.kt = self.jlstore("kt", jl.Matern(1/2, self.temporal_deviation, self.temporal_length))
+        self.ks = self.jlstore("ks", jl.Matern(1/2, self.spatial_deviation, self.spatial_length))
+        self.dx = self.jlstore("dx", 0.10)
+        self.stgpkfprob = jl.seval("problem = STGPKFProblem(grid_points, ks, kt, dt_min)")
+        self.ngpkf_grid = jl.seval("ngpkf_grid = NGPKF.NGPKFGrid(xs, ys, ks)")
+        jl.seval("ergo_grid = SimulatorST.ErgoGrid(ngpkf_grid, (256,256))")
+        self.ergo_grid = jl.seval("ergo_grid")  
+        pass
+
+    def filter_update(self):
+        if self.controller_initalized:
+            jl.seval("measure_sigma = (sigma_meas^2) * I(length(measurement_w))")
+
+            # Update estimate using KF
+            jl.seval("state_correction = stgpkf_correct(problem, state, measurement_pts, measurement_w, measure_sigma)")
+            jl.seval("state = stgpkf_predict(problem, state_correction)")
+            self.stgpkf_state = jl.seval("state")
+            jl.seval("est = STGPKF.get_estimate(problem, state)")
+            jl.seval("w_hat = reshape(est, length(xs), length(ys))")
+            self.w_hat = jl.seval("w_hat")
+
+            # update the clarity map
+            jl.seval("qs = STGPKF.get_estimate_clarity(problem, state)")
+            self.qs = jl.seval("qs")
+            jl.seval("q_map = reshape(qs, length(xs), length(ys))")
+            jl.seval("ergo_q_map = SimulatorST.ngpkf_to_ergo(ngpkf_grid, ergo_grid, q_map)")
+            self.ergo_q_map = jl.seval("ergo_q_map")
+            self.jlstore("target_q", self.target_q)
+
+            jl.seval("M = w_hat")
+            self.M = jl.seval("M")
+
+        # Clear measure vecs
+        jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
+        jl.seval("measurement_w = Vector{Float64}()")
         pass
 
     def get_day_of_year(self, now):

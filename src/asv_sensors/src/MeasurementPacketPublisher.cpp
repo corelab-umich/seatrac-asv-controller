@@ -72,17 +72,11 @@ public:
 private:
 
     void wind_parser(const ::messages::msg::Wind ros_wind_msg)
-    {
-        
-        // auto ros_wind_msg = asv::messages::WindMessage::decode(raw_data->data.data(), raw_data->data.size());
-        // auto ros_wind_msg = raw_data;
-        RCLCPP_DEBUG(this->get_logger(), "Wind Speed: %f", ros_wind_msg.apparent_speed);
-
-        // RCLCPP_DEBUG(this->get_logger(), "Received Wind sensor message");
-        RCLCPP_DEBUG(this->get_logger(), "Wind Speed: %f", ros_wind_msg.apparent_speed);
-
-        double filter_weight = std::min((sample_time/tau), double(1));
-        parsed_wind.speed = filter_weight * ros_wind_msg.apparent_speed + (1 - filter_weight) * parsed_wind.speed;
+    {        
+        // double filter_weight = std::min((sample_time/tau), double(1));
+        // parsed_wind.speed = filter_weight * ros_wind_msg.apparent_speed + (1 - filter_weight) * parsed_wind.speed;
+        // TODO: Convert to desired distribution
+        parsed_wind.speed = ros_wind_msg.apparent_speed * KTS_TO_MS;
         parsed_wind.angle = ros_wind_msg.apparent_angle;
         parsed_wind.temperature = ros_wind_msg.temperature;
         parsed_wind.pressure = ros_wind_msg.pressure;
