@@ -273,8 +273,8 @@ class ASVErgoControl(Node):
             self.kt = self.jlstore("kt", jl.Matern(1/2, sigma_t, lt))
             self.ks = self.jlstore("ks", jl.Matern(1/2, sigma_s, ls))
             self.dx = self.jlstore("dx", 0.10)
-            self.xs = jl.seval("xs = 0:dx:1.4")
-            self.ys = jl.seval("ys = 0:dx:6.5")
+            self.xs = jl.seval("xs = 0:dx:1.6")
+            self.ys = jl.seval("ys = 0:dx:1.9")
 
             # Create grid point variable
             self.grid_points = jl.seval("grid_points = vec([@SVector[x, y] for x in xs, y in ys])")

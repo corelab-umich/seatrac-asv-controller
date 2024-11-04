@@ -77,8 +77,8 @@ class JuliaPublisher(Node):
         kt = self.jlstore("kt", jl.Matern(1/2, sigma_t, lt))
         ks = self.jlstore("ks", jl.Matern(1/2, sigma_s, ls))
         dx = self.jlstore("dx", 0.10)
-        xs = jl.seval("xs = 0:dx:1.4")
-        ys = jl.seval("ys = 0:dx:6.5")
+        xs = jl.seval("xs = 0:dx:1.6")
+        ys = jl.seval("ys = 0:dx:1.9")
 
         self.synthetic_data = jl.seval("STGPKF.generate_spatiotemporal_process(xs, ys, dt_min, (T_end - T_begin)*60.0, ks, kt)")
         # print(self.synthetic_data.ts[2])
@@ -95,7 +95,7 @@ class JuliaPublisher(Node):
         self.latitude = 0.0
         self.longitude = 0.0
         self.pose_x = 0.75
-        self.pose_y = 3.0
+        self.pose_y = 0.75
         self.state_of_charge = 0.0
         self.windspeed = 0.0
         self.sim_time = self.synthetic_data.ts[0]

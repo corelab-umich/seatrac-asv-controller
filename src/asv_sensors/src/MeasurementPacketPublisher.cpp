@@ -57,8 +57,10 @@ public:
   MeasurementPacketPublisher() : Node("measurement_packet_publisher")
   {
     // Declare Domain Origin Parameter
-    this->declare_parameter("origin_latitude", 35.751066);
-    this->declare_parameter("origin_longitude", -79.034666);
+    // this->declare_parameter("origin_latitude", 35.751066);
+    // this->declare_parameter("origin_longitude", -79.034666);
+    this->declare_parameter("origin_latitude", 35.703543);
+    this->declare_parameter("origin_longitude", -79.042890);
 
     wind_sub_ = this->create_subscription<::messages::msg::Wind>("/wind", rclcpp::SensorDataQoS(), std::bind(&MeasurementPacketPublisher::wind_parser, this, std::placeholders::_1));
     gps_sub_ = this->create_subscription<::messages::msg::AsvGps>("/gps", rclcpp::SensorDataQoS(), std::bind(&MeasurementPacketPublisher::gps_parser, this, std::placeholders::_1));
