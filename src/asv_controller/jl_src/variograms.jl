@@ -178,8 +178,8 @@ end
 function empirical_variogram_st(h, u, γ, n_bins=50)
     # h_max = maximum(h)
     # u_max = maximum(u)
-    h_max = minimum(maximum(h), 10.0)
-    u_max = minimum(maximum(u), 120)
+    h_max = min(maximum(h), 10.0)
+    u_max = min(maximum(u), 120.0)
     h_edges = range(0, h_max, length=n_bins+1)
     u_edges = range(0, u_max, length=n_bins+1)
     
