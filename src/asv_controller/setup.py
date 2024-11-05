@@ -22,7 +22,8 @@ setup(
         'console_scripts': [
             'synthetic_data_pub = asv_controller.juliatest:main',
             'asv_ergo_control = asv_controller.AsvErgoControl:main',
-            'param_estimator = asv_controller.ParamEstimator:main'
+            'param_estimator = asv_controller.ParamEstimator:main',
+            'q_map_pub = asv_controller.QMapPub:main'
         ],
     },
 )

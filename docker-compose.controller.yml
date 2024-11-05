@@ -4,11 +4,18 @@ services:
     command: ros2 run asv_controller asv_ergo_control  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
     volumes:
       - ./.jld2/:/root/jld2_files
+      - ./.images/:/root/images
   
   param_estimator:
     build: ./
     command: ros2 run asv_controller param_estimator --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-  
+
+  q_map_pub:
+    build: ./
+    command: ros2 run asv_controller q_map_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.images/:/root/images
+
   command_publisher:
     build: ./
     network_mode: "host"

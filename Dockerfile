@@ -29,7 +29,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # install overlay dependencies
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS
-RUN apt-get update && apt-get install -y python3-pip curl wget vim tzdata
+RUN apt-get update && apt-get install -y python3-pip curl wget vim tzdata ros-humble-cv-bridge
 COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
 COPY deps/py_requirements.txt .
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
@@ -67,5 +67,3 @@ ENV OVERLAY_WS $OVERLAY_WS
 RUN sed --in-place --expression \
       '$isource "$OVERLAY_WS/install/setup.bash"' \
       /ros_entrypoint.sh
-
-# COPY deps/juliapkg.json $OVERLAY_WS/install/asv_controller/lib/asv_controller
