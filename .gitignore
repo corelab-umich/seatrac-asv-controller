@@ -60,3 +60,4 @@ log/
 .vscode/
 .rosbags/
 .jld2/
+.images/

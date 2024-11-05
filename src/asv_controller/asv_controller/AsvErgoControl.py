@@ -85,15 +85,14 @@ class ASVErgoControl(Node):
         time_string = current_time.strftime("%Y-%m-%d_%H-%M-%S")
         self.filename = f"/root/jld2_files/{time_string}_jlvars.jld2"
         jl.seval("""
-            function save_all_workspace_variables(fname)
-                 
+            function save_selected_variables(fname, vars_to_save)
                 group_name = Dates.format(now(), "yyyyMMdd_HH-mm-ss.sSSS")
-                
-                # Collect all non-function, non-module variables from the Main module
+
+                # Convert variable names to Symbols and filter defined variables
                 workspace_vars = Dict(
-                    string(var) => getfield(Main, var)
-                    for var in names(Main, all=true)
-                    if isdefined(Main, var) && !(typeof(getfield(Main, var)) <: Function || typeof(getfield(Main, var)) <: Module)
+                    string(var) => getfield(Main, Symbol(var))
+                    for var in vars_to_save
+                    if isdefined(Main, Symbol(var)) && !(typeof(getfield(Main, Symbol(var))) <: Function || typeof(getfield(Main, Symbol(var))) <: Module)
                 )
                 
                 # Save to a JLD2 file with compression, under a specified group
@@ -417,6 +416,32 @@ class ASVErgoControl(Node):
             jl.seval("M = w_hat")
             self.M = jl.seval("M")
 
+            # Save variable states to JLD2 file
+            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q", "measurement_pts", "measurement_w"]
+            jl.save_selected_variables(self.filename, variables_to_save)  
+
+            # Save plots
+            jl.seval("""
+                        polygon_vertices = hcat(JordanLakeDomain.convex_polygon.vertices, JordanLakeDomain.convex_polygon.vertices[:, 1])
+                        heatmap(xs, ys, q_map', clims=(0, 1))
+                        plot!(polygon_vertices[1, :], polygon_vertices[2, :], seriestype=:shape, fillalpha=0.0, label="", lw = 2, linecolor = "green")
+                        plot!(legend=false)
+                        xlabel!("x [km]")
+                        ylabel!("y [km]")
+                        title!("q_map")
+                        savefig("/root/images/q_map.png")
+                     """)      
+            jl.seval("""
+                        polygon_vertices = hcat(JordanLakeDomain.convex_polygon.vertices, JordanLakeDomain.convex_polygon.vertices[:, 1])
+                        heatmap(xs, ys, w_hat', cmap = :balance, clims=(-5, 5))
+                        plot!(polygon_vertices[1, :], polygon_vertices[2, :], seriestype=:shape, fillalpha=0.0, label="", lw = 3, linecolor = "green")
+                        plot!(legend=false)
+                        xlabel!("x [km]")
+                        ylabel!("y [km]")
+                        title!("w_hat")
+                        savefig("/root/images/w_hat.png")
+                     """)
+
         # Clear measure vecs
         jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
         jl.seval("measurement_w = Vector{Float64}()")
@@ -439,7 +464,7 @@ class ASVErgoControl(Node):
 
    
     def heading_calc(self, ux, uy):
-        heading = np.degrees(np.atan2(ux, uy))
+        heading = np.degrees(np.arctan2(ux, uy))
         return (heading + 360) % 360
 
 def main(args=None):
