@@ -48,6 +48,10 @@ COPY deps/install.jl .
 RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.1-linux-x86_64.tar.gz && tar zxvf julia-1.11.1-linux-x86_64.tar.gz
 RUN echo PATH="\$PATH:/root/julia_install/julia-1.11.1/bin" >> ~/.bashrc
 RUN /root/julia_install/julia-1.11.1/bin/julia install.jl
+# Set environment variable for JuliaCall to offline mode
+# ENV JULIA_BINDIR=/root/julia_install/julia-1.11/bin
+ENV PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia
+ENV PYTHON_JULIAPKG_OFFLINE=yes
 
 WORKDIR $OVERLAY_WS
 
