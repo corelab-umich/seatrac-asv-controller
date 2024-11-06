@@ -121,7 +121,17 @@ private:
     measurement_msg.speedoverground = parsed_gps.speed;
 
     // Wind Measurement
-    measurement_msg.windspeed = parsed_wind.speed;
+    double true_wind_speed = calculateTrueWindSpeed(parsed_wind.speed, parsed_wind.angle, parsed_gps.speed, parsed_gps.heading);
+
+    // Update cumulative wind speed and measurement count
+    cumulative_wind_speed += true_wind_speed;
+    wind_measurement_count++;
+
+    // Calculate the running average
+    running_average_wind_speed = cumulative_wind_speed / wind_measurement_count;
+
+    // Adjust the true wind speed by subtracting the running average
+    measurement_msg.windspeed = true_wind_speed - running_average_wind_speed;
 
     measurement_pub_->publish(measurement_msg);
   }
@@ -142,10 +152,39 @@ private:
       ew_distance = EARTH_RADIUS * cos(avg_lat) * (lon - lon_origin);
   }
 
+  double calculateTrueWindSpeed(double apparentWindSpeed, double apparentWindAngle,
+                              double boatSpeed, double boatCourse) {
+    // Convert angles from degrees to radians
+    double apparentAngleRad = apparentWindAngle * M_PI / 180.0;
+    double boatCourseRad = boatCourse * M_PI / 180.0;
+
+    // Calculate components of the apparent wind relative to the boat
+    double V_ax = apparentWindSpeed * cos(apparentAngleRad);
+    double V_ay = apparentWindSpeed * sin(apparentAngleRad);
+
+    // Calculate components of the boat's velocity over ground
+    double V_bx = boatSpeed * cos(boatCourseRad);
+    double V_by = boatSpeed * sin(boatCourseRad);
+
+    // Calculate components of the true wind vector
+    double V_tx = V_ax + V_bx;
+    double V_ty = V_ay + V_by;
+
+    // Calculate the true wind speed
+    double trueWindSpeed = std::sqrt(V_tx * V_tx + V_ty * V_ty);
+
+    return trueWindSpeed;
+}
+
   double sample_time = 0.25; // filter sample time in units of seconds
   double tau = 0.5; // filter time constant in units of seconds
   double ns_distance;
   double ew_distance;
+
+  // Wind Speed Moving Average Variables
+  double cumulative_wind_speed; // Cumulative sum of all true wind speeds
+  uint64_t wind_measurement_count; // Count of wind speed measurements
+  double running_average_wind_speed; // Current running average of true wind speeds
 
   rclcpp::Subscription<::messages::msg::Wind>::SharedPtr wind_sub_;
   rclcpp::Subscription<::messages::msg::AsvGps>::SharedPtr gps_sub_;
