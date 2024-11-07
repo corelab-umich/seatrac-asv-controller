@@ -61,6 +61,7 @@ public:
     // this->declare_parameter("origin_longitude", -79.034666);
     this->declare_parameter("origin_latitude", 35.703543);
     this->declare_parameter("origin_longitude", -79.042890);
+    this->declare_parameter("rated_wind_speed_kts", 1.5);
 
     auto qos_profile = rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_default))
                       .reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
@@ -135,6 +136,10 @@ private:
 
     // Adjust the true wind speed by subtracting the running average
     measurement_msg.windspeed = true_wind_speed - running_average_wind_speed;
+
+    // Adjust the rated true wind speed by subtracting the running average
+    double rated_wind_ms = this->get_parameter("rated_wind_speed_kts").as_double() * KTS_TO_MS;
+    measurement_msg.ratedwind = rated_wind_ms - running_average_wind_speed;
 
     measurement_pub_->publish(measurement_msg);
   }

@@ -62,8 +62,6 @@ class ASVErgoControl(Node):
         self.ki = 0.01
         self.declare_parameter('speed_kd', 0.5)
         self.kd = 0.5
-        # TODO: Add Speed & Heading Override Parameters
-        # TODO: Make rated speed a parameter
 
         """ Parameter Update Function """
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -179,7 +177,7 @@ class ASVErgoControl(Node):
         self.target_q_matrix = None
 
         # Rated Speed
-        self.w_rated = 2.25 # TODO: Make a parameter
+        self.w_rated = None
 
         """ Filter Updates """
         timer_filter = 5 # seconds
@@ -342,6 +340,7 @@ class ASVErgoControl(Node):
         jl.seval("traj = vcat(coords...)")
 
         self.jlstore("speed", speed)
+        self.jlstore("w_rated", self.w_rated)
         jl.seval("speeds, new_q_target = Controller.ergo_controller_weighted_2(coords[end], M, w_rated, JordanLakeDomain.convex_polygon, target_q, Nx, Ny, xs, ys; ergo_grid=ergo_grid, ergo_q_map=ergo_q_map, traj=traj, umax=speed)")
 
 
@@ -369,8 +368,6 @@ class ASVErgoControl(Node):
         return speed, target_soc
     
     def measurement_aggregator(self, msg):
-
-        self.get_logger().info('NEW MEASUREMENT FOUND')
         # Store state of charge
         self.state_of_charge = msg.stateofcharge
 
@@ -385,7 +382,9 @@ class ASVErgoControl(Node):
         # Add windspeed to measurement vector for KF
         self.jlstore("temp_speed", msg.windspeed)
         jl.seval("push!(measurement_w, temp_speed)")
-        # jl.seval("push!(measurement_w, SimulatorST.MeasurementSpatial(1.0, measurement_pts[end], temp_speed))")
+
+        self.w_rated = msg.ratedwind
+
         pass
 
     def param_update(self, msg):
