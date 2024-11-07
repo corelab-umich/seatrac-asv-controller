@@ -88,9 +88,12 @@ class ASVErgoControl(Node):
         self.sim_vars = jl.include("src/asv_controller/jl_src/simulator_ST.jl")
 
         # JLD2 Saving
+        self.file_counter = 0
         current_time = datetime.now()
-        time_string = current_time.strftime("%Y-%m-%d_%H-%M-%S")
-        self.filename = f"/root/jld2_files/{time_string}_jlvars.jld2"
+        self.time_string = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.filename = f"/root/jld2_files/{self.time_string}_jlvars_{self.file_counter}.jld2"
+        filename_timer = 60*15 # minutes -> seconds
+        self.filetimer = self.create_timer(filename_timer, self.filename_update)
         jl.seval("""
             function save_selected_variables(fname, vars_to_save)
                 group_name = Dates.format(now(), "yyyyMMdd_HH-mm-ss.sSSS")
@@ -251,22 +254,19 @@ class ASVErgoControl(Node):
         self.T_end = self.T_begin + self.mission_duration_hrs
         self.ts_hrs = [self.T_begin + i * self.dt_hrs for i in range(int((self.T_end - self.T_begin)/ self.dt_hrs) + 1)]
         soc_begin = self.state_of_charge
-        print("soc_begin", soc_begin)
         soc_end = self.terminal_soc
-        # TODO: Create a reference plot for SOC vs Time under ideal case to determine final SOC target
 
         # Compute SOC barriers and target profile
         ucbf = self.soc_controller.compute_ucbf(self.ts_hrs, self.dt_hrs)
         lcbf = self.soc_controller.compute_lcbf(self.ts_hrs, self.dt_hrs)
-        self.soc_target = self.soc_controller.generate_SOC_target(lcbf, ucbf, soc_begin, soc_end, self.ts_hrs, self.dt_hrs)
-        # try:
-        #     self.soc_target = self.soc_controller.generate_SOC_target(lcbf, ucbf, soc_begin, soc_end, self.ts_hrs, self.dt_hrs)
-        #     self.get_logger().debug('Generated SOC Target: {self.soc_target[2]}')
-        # except:
-        #     self.get_logger().error('Failed to generate SOC Target')
-        #     controller_disable = Parameter('controller_enable', Parameter.Type.BOOL, False)
-        #     self.set_parameters([controller_disable])
-        #     return
+        try:
+            self.soc_target = self.soc_controller.generate_SOC_target(lcbf, ucbf, soc_begin, soc_end, self.ts_hrs, self.dt_hrs)
+            self.get_logger().debug('Generated SOC Target: {self.soc_target[2]}')
+        except:
+            self.get_logger().error('Failed to generate SOC Target')
+            controller_disable = Parameter('controller_enable', Parameter.Type.BOOL, False)
+            self.set_parameters([controller_disable])
+            return
         
         """ Initialize Ergodic Controller """
         self.get_logger().debug('Initializing Ergodic Controller')
@@ -280,7 +280,7 @@ class ASVErgoControl(Node):
             # Create domain arrays
             self.kt = self.jlstore("kt", jl.Matern(1/2, sigma_t, lt))
             self.ks = self.jlstore("ks", jl.Matern(1/2, sigma_s, ls))
-            self.dx = self.jlstore("dx", 0.10)
+            self.dx = self.jlstore("dx", 0.05)
             self.xs = jl.seval("xs = 0:dx:1.6")
             self.ys = jl.seval("ys = 0:dx:1.9")
 
@@ -398,7 +398,7 @@ class ASVErgoControl(Node):
         try:
             self.kt = self.jlstore("kt", jl.Matern(1/2, self.temporal_deviation, self.temporal_length))
             self.ks = self.jlstore("ks", jl.Matern(1/2, self.spatial_deviation, self.spatial_length))
-            self.dx = self.jlstore("dx", 0.10)
+            self.dx = self.jlstore("dx", 0.05)
             self.stgpkfprob = jl.seval("problem = STGPKFProblem(grid_points, ks, kt, dt_min)")
             self.ngpkf_grid = jl.seval("ngpkf_grid = NGPKF.NGPKFGrid(xs, ys, ks)")
             jl.seval("ergo_grid = SimulatorST.ErgoGrid(ngpkf_grid, (256,256))")
@@ -476,7 +476,11 @@ class ASVErgoControl(Node):
         seconds_fraction = now.second / 3600.0
         return hours + minutes_fraction + seconds_fraction
 
-   
+    def filename_update(self):
+        self.file_counter += 1
+        self.filename = f"/root/jld2_files/{self.time_string}_jlvars_{self.file_counter}.jld2"
+        pass
+
     def heading_calc(self, ux, uy):
         heading = np.degrees(np.arctan2(ux, uy))
         return (heading + 360) % 360

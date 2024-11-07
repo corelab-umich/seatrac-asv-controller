@@ -148,11 +148,11 @@ function hp_fit(measurements)
     if param_fit.param[1] <= 0 || param_fit.param[1] > 15
         param_fit.param[1] = 1.0;
     end
-    if param_fit.param[2] <= 0 || param_fit.param[2] > 50
-        param_fit.param[2] = 2.0;
+    if param_fit.param[2] <= 0 || param_fit.param[2] > 15
+        param_fit.param[2] = 0.75;
     end
-    if param_fit.param[3] <= 0 || param_fit.param[3] > 100
-        param_fit.param[3] = 5.0;
+    if param_fit.param[3] <= 0 || param_fit.param[3] > 240
+        param_fit.param[3] = 45.0;
     end
     return param_fit.param[1], param_fit.param[2], param_fit.param[3]
 end

@@ -25,6 +25,9 @@ class ParamEstimator(Node):
                 self.spatial_deviation = param.value
             if param.name == 'temporal_deviation' and param.type_ == Parameter.Type.DOUBLE:
                 self.temporal_deviation = param.value
+            if param.name == 'measurement_window_sec' and param.type_ == Parameter.Type.DOUBLE:
+                self.measure_window = param.value
+                self.jlstore("measure_window", self.measure_window)
         return SetParametersResult(successful=True)
 
     def __init__(self):
@@ -50,6 +53,8 @@ class ParamEstimator(Node):
         self.spatial_deviation = 1.0
         self.declare_parameter('temporal_deviation', 1.0)
         self.temporal_deviation = 1.0
+        self.declare_parameter('measurement_window_sec', 60.0 * 30.0)
+        self.measure_window = 60.0 * 30.0
 
         """ Parameter Update Function """
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -65,7 +70,7 @@ class ParamEstimator(Node):
         jl.seval("time = 0.0")
         jl.seval("speed = 0.0")
         self.jlstore = jl.seval("(k, v) -> (@eval $(Symbol(k)) = $v; return)")
-        self.jlstore("measure_vec_size", 60*30)
+        self.jlstore("measure_window", self.measure_window)
 
         """ Subscribe to Sensor Data """
         self.subscription = self.create_subscription(
@@ -106,13 +111,15 @@ class ParamEstimator(Node):
             self.publisher_.publish(msg)
 
         """ Remove oldest measurement """
+        if len(self.measurements) > (self.measure_window):
+            jl.seval("measurements = measurements[(length(measurements) - Int(measure_window)) : end]")
         # TODO: Make the measurement window a parameter
-        try:
-            if len(self.measurements) >= (60*30):
-                jl.seval("measurements = [length(measurements) - measure_vec_size:end]")
-        except:
-            self.get_logger().error('Measurement Trimming Failed')
-        pass
+        # try:
+        #     if len(self.measurements) > (self.measure_window):
+        #         jl.seval("measurements = [length(measurements) - measure_window:end]")
+        # except:
+        #     self.get_logger().error('Measurement Trimming Failed')
+        # pass
 
     def measurement_aggregator(self, msg):
         """ Convert lat/long to x/y positions """
