@@ -46,6 +46,9 @@ public:
 
     this->declare_parameter("ip_address", LOCALHOST);
     this->declare_parameter("udp_port", PORT);
+    this->declare_parameter("allow_command", true);
+    this->declare_parameter("manual_kts", 0.0);
+    this->declare_parameter("manual_heading", 0.0);
 
     udp_sender_.init(this->get_parameter("ip_address").as_string(), this->get_parameter("udp_port").as_int());
   }
@@ -56,8 +59,15 @@ private:
     {
         asv::messages::ControlMessage control_msg{};
         
-        control_msg.desired_heading = ros_cmd_msg.heading;
-        control_msg.desired_rpm = kts_to_rpm(ros_cmd_msg.speed_kts);
+        if(this->get_parameter("allow_command").as_bool())
+        {
+          control_msg.desired_heading = ros_cmd_msg.heading;
+          control_msg.desired_rpm = kts_to_rpm(ros_cmd_msg.speed_kts);
+        }else{
+          control_msg.desired_heading = this->get_parameter("manual_heading").as_double();
+          control_msg.desired_rpm = kts_to_rpm(this->get_parameter("manual_kts").as_double());
+        }
+        
 
         udp_sender_.send_message(control_msg.encode());
     }
