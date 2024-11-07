@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from juliacall import Main as jl
 import numpy as np
 from datetime import datetime
@@ -38,6 +39,12 @@ class ASVErgoControl(Node):
 
     def __init__(self):
         super().__init__('asv_ergo_control')
+
+        qos_profile = QoSProfile(
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10,  # Adjust depth based on your needs
+            reliability=QoSReliabilityPolicy.BEST_EFFORT
+        )
 
         """ Timezone/Clock Setup """
         self.local_tz = get_localzone()
@@ -111,7 +118,7 @@ class ASVErgoControl(Node):
             SensorData,
             'measurement_packet',
             self.measurement_aggregator,
-            10)
+            qos_profile)
         self.subscription  # prevent unused variable warning
         self.state_of_charge = None
         self.position_xy = None
@@ -121,7 +128,7 @@ class ASVErgoControl(Node):
             ParamEst,
             'param_estimates',
             self.param_update,
-            10)
+            qos_profile)
         self.spatial_length = 0.0
         self.temporal_length = 0.0
         self.spatial_deviation = 0.0
@@ -244,20 +251,22 @@ class ASVErgoControl(Node):
         self.T_end = self.T_begin + self.mission_duration_hrs
         self.ts_hrs = [self.T_begin + i * self.dt_hrs for i in range(int((self.T_end - self.T_begin)/ self.dt_hrs) + 1)]
         soc_begin = self.state_of_charge
+        print("soc_begin", soc_begin)
         soc_end = self.terminal_soc
         # TODO: Create a reference plot for SOC vs Time under ideal case to determine final SOC target
 
         # Compute SOC barriers and target profile
         ucbf = self.soc_controller.compute_ucbf(self.ts_hrs, self.dt_hrs)
         lcbf = self.soc_controller.compute_lcbf(self.ts_hrs, self.dt_hrs)
-        try:
-            self.soc_target = self.soc_controller.generate_SOC_target(lcbf, ucbf, soc_begin, soc_end, self.ts_hrs, self.dt_hrs)
-            self.get_logger().debug('Generated SOC Target: {self.soc_target[2]}')
-        except:
-            self.get_logger().error('Failed to generate SOC Target')
-            controller_disable = Parameter('controller_enable', Parameter.Type.BOOL, False)
-            self.set_parameters([controller_disable])
-            return
+        self.soc_target = self.soc_controller.generate_SOC_target(lcbf, ucbf, soc_begin, soc_end, self.ts_hrs, self.dt_hrs)
+        # try:
+        #     self.soc_target = self.soc_controller.generate_SOC_target(lcbf, ucbf, soc_begin, soc_end, self.ts_hrs, self.dt_hrs)
+        #     self.get_logger().debug('Generated SOC Target: {self.soc_target[2]}')
+        # except:
+        #     self.get_logger().error('Failed to generate SOC Target')
+        #     controller_disable = Parameter('controller_enable', Parameter.Type.BOOL, False)
+        #     self.set_parameters([controller_disable])
+        #     return
         
         """ Initialize Ergodic Controller """
         self.get_logger().debug('Initializing Ergodic Controller')
@@ -360,6 +369,8 @@ class ASVErgoControl(Node):
         return speed, target_soc
     
     def measurement_aggregator(self, msg):
+
+        self.get_logger().info('NEW MEASUREMENT FOUND')
         # Store state of charge
         self.state_of_charge = msg.stateofcharge
 
@@ -384,13 +395,16 @@ class ASVErgoControl(Node):
         self.temporal_deviation = msg.temporal_deviation
 
         # Generate new STGPKF state
-        self.kt = self.jlstore("kt", jl.Matern(1/2, self.temporal_deviation, self.temporal_length))
-        self.ks = self.jlstore("ks", jl.Matern(1/2, self.spatial_deviation, self.spatial_length))
-        self.dx = self.jlstore("dx", 0.10)
-        self.stgpkfprob = jl.seval("problem = STGPKFProblem(grid_points, ks, kt, dt_min)")
-        self.ngpkf_grid = jl.seval("ngpkf_grid = NGPKF.NGPKFGrid(xs, ys, ks)")
-        jl.seval("ergo_grid = SimulatorST.ErgoGrid(ngpkf_grid, (256,256))")
-        self.ergo_grid = jl.seval("ergo_grid")  
+        try:
+            self.kt = self.jlstore("kt", jl.Matern(1/2, self.temporal_deviation, self.temporal_length))
+            self.ks = self.jlstore("ks", jl.Matern(1/2, self.spatial_deviation, self.spatial_length))
+            self.dx = self.jlstore("dx", 0.10)
+            self.stgpkfprob = jl.seval("problem = STGPKFProblem(grid_points, ks, kt, dt_min)")
+            self.ngpkf_grid = jl.seval("ngpkf_grid = NGPKF.NGPKFGrid(xs, ys, ks)")
+            jl.seval("ergo_grid = SimulatorST.ErgoGrid(ngpkf_grid, (256,256))")
+            self.ergo_grid = jl.seval("ergo_grid")  
+        except:
+            self.get_logger().error('Param Estimation Failure')
         pass
 
     def filter_update(self):

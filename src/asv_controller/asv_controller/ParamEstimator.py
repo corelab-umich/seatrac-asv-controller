@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from juliacall import Main as jl
 import numpy as np
 from datetime import datetime
@@ -28,6 +29,12 @@ class ParamEstimator(Node):
 
     def __init__(self):
         super().__init__('param_estimator')
+
+        qos_profile = QoSProfile(
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10,  # Adjust depth based on your needs
+            reliability=QoSReliabilityPolicy.BEST_EFFORT
+        )
       
         """ Timezone/Clock Setup """
         self.local_tz = get_localzone()
@@ -65,11 +72,11 @@ class ParamEstimator(Node):
             SensorData,
             'measurement_packet',
             self.measurement_aggregator,
-            10)
+            qos_profile)
         self.subscription  # prevent unused variable warning
 
         """ Parameter Estimate Publisher"""
-        self.publisher_ = self.create_publisher(ParamEst, 'param_estimates', 10)
+        self.publisher_ = self.create_publisher(ParamEst, 'param_estimates', qos_profile)
         timer_period = 30 # seconds
         self.timer = self.create_timer(timer_period, self.timed_estimator)
     
@@ -100,8 +107,11 @@ class ParamEstimator(Node):
 
         """ Remove oldest measurement """
         # TODO: Make the measurement window a parameter
-        if len(self.measurements) >= (60*30):
-            jl.seval("measurements = [length(measurements) - measure_vec_size:end]")
+        try:
+            if len(self.measurements) >= (60*30):
+                jl.seval("measurements = [length(measurements) - measure_vec_size:end]")
+        except:
+            self.get_logger().error('Measurement Trimming Failed')
         pass
 
     def measurement_aggregator(self, msg):

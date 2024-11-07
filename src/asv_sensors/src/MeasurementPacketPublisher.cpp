@@ -62,11 +62,14 @@ public:
     this->declare_parameter("origin_latitude", 35.703543);
     this->declare_parameter("origin_longitude", -79.042890);
 
+    auto qos_profile = rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_default))
+                      .reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
+
     wind_sub_ = this->create_subscription<::messages::msg::Wind>("/wind", rclcpp::SensorDataQoS(), std::bind(&MeasurementPacketPublisher::wind_parser, this, std::placeholders::_1));
     gps_sub_ = this->create_subscription<::messages::msg::AsvGps>("/gps", rclcpp::SensorDataQoS(), std::bind(&MeasurementPacketPublisher::gps_parser, this, std::placeholders::_1));
     power_sub_ = this->create_subscription<::messages::msg::PowerLevel>("/power_level", rclcpp::SensorDataQoS(), std::bind(&MeasurementPacketPublisher::soc_parser, this, std::placeholders::_1));
 
-    measurement_pub_ = this->create_publisher<::messages::msg::SensorData>("/measurement_packet", rclcpp::SensorDataQoS());
+    measurement_pub_ = this->create_publisher<::messages::msg::SensorData>("/measurement_packet", qos_profile);
 
     timer_ = this->create_wall_timer(1000ms, std::bind(&MeasurementPacketPublisher::publish_data, this));
   }
