@@ -10,6 +10,7 @@
 // ASV Message Types
 #include <asv_messages/WindMessage.h>
 #include <asv_messages/GPSMessage.h>
+#include <asv_messages/PowerLevelMessage.h>
 
 // Other Message Types
 #include <std_msgs/msg/header.hpp>
@@ -17,6 +18,7 @@
 #include <messages/msg/wind.hpp>
 #include <messages/msg/sensor_data.hpp>
 #include <messages/msg/asv_gps.hpp>
+#include <messages/msg/power_level.hpp>
 
 using namespace std::chrono_literals;
 
@@ -37,9 +39,16 @@ typedef struct
     double heading;
 } gps_data;
 
+typedef struct
+{
+  double state_of_charge;
+} pwr_data;
+
+
 const float KTS_TO_MS = 0.5144444;
 const double EARTH_RADIUS = 6371.0; // Radius of the Earth in kilometers
 const double DEG_TO_RAD = M_PI / 180.0; // Convert degrees to radians
+const double ASV_MAX_BATTERY = 6500.00; // Max capacity of ASV battery in Wh
 
 
 class MeasurementPacketPublisher : public rclcpp::Node
@@ -48,13 +57,20 @@ public:
   MeasurementPacketPublisher() : Node("measurement_packet_publisher")
   {
     // Declare Domain Origin Parameter
-    this->declare_parameter("origin_latitude", 35.751066);
-    this->declare_parameter("origin_longitude", -79.034666);
+    // this->declare_parameter("origin_latitude", 35.751066);
+    // this->declare_parameter("origin_longitude", -79.034666);
+    this->declare_parameter("origin_latitude", 35.703543);
+    this->declare_parameter("origin_longitude", -79.042890);
+    this->declare_parameter("rated_wind_speed_kts", 1.5);
+
+    auto qos_profile = rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_default))
+                      .reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
 
     wind_sub_ = this->create_subscription<::messages::msg::Wind>("/wind", rclcpp::SensorDataQoS(), std::bind(&MeasurementPacketPublisher::wind_parser, this, std::placeholders::_1));
     gps_sub_ = this->create_subscription<::messages::msg::AsvGps>("/gps", rclcpp::SensorDataQoS(), std::bind(&MeasurementPacketPublisher::gps_parser, this, std::placeholders::_1));
+    power_sub_ = this->create_subscription<::messages::msg::PowerLevel>("/power_level", rclcpp::SensorDataQoS(), std::bind(&MeasurementPacketPublisher::soc_parser, this, std::placeholders::_1));
 
-    measurement_pub_ = this->create_publisher<::messages::msg::SensorData>("/measurement_packet", rclcpp::SensorDataQoS());
+    measurement_pub_ = this->create_publisher<::messages::msg::SensorData>("/measurement_packet", qos_profile);
 
     timer_ = this->create_wall_timer(1000ms, std::bind(&MeasurementPacketPublisher::publish_data, this));
   }
@@ -62,17 +78,11 @@ public:
 private:
 
     void wind_parser(const ::messages::msg::Wind ros_wind_msg)
-    {
-        
-        // auto ros_wind_msg = asv::messages::WindMessage::decode(raw_data->data.data(), raw_data->data.size());
-        // auto ros_wind_msg = raw_data;
-        RCLCPP_DEBUG(this->get_logger(), "Wind Speed: %f", ros_wind_msg.apparent_speed);
-
-        // RCLCPP_DEBUG(this->get_logger(), "Received Wind sensor message");
-        RCLCPP_DEBUG(this->get_logger(), "Wind Speed: %f", ros_wind_msg.apparent_speed);
-
-        double filter_weight = std::min((sample_time/tau), double(1));
-        parsed_wind.speed = filter_weight * ros_wind_msg.apparent_speed + (1 - filter_weight) * parsed_wind.speed;
+    {        
+        // double filter_weight = std::min((sample_time/tau), double(1));
+        // parsed_wind.speed = filter_weight * ros_wind_msg.apparent_speed + (1 - filter_weight) * parsed_wind.speed;
+        // TODO: Convert to desired distribution
+        parsed_wind.speed = ros_wind_msg.apparent_speed * KTS_TO_MS;
         parsed_wind.angle = ros_wind_msg.apparent_angle;
         parsed_wind.temperature = ros_wind_msg.temperature;
         parsed_wind.pressure = ros_wind_msg.pressure;
@@ -87,6 +97,11 @@ private:
       parsed_gps.heading = ros_gps_msg.current_heading;
     }
 
+    void soc_parser(const ::messages::msg::PowerLevel pwr_lvl_msg)
+    {
+      parsed_pwr.state_of_charge = (pwr_lvl_msg.soc_percent/100.00) * ASV_MAX_BATTERY; 
+    }
+
   void publish_data()
   {
     auto measurement_msg = ::messages::msg::SensorData{};
@@ -98,11 +113,33 @@ private:
     measurement_msg.pose_y = ns_distance;
     measurement_msg.pose_x = ew_distance;
 
-    measurement_msg.windspeed = parsed_wind.speed;
+    // GPS Position of ASV
     measurement_msg.latitude = parsed_gps.latitude;
     measurement_msg.longitude = parsed_gps.longitude;
+
+    // ASV State of Charge
+    measurement_msg.stateofcharge = parsed_pwr.state_of_charge;
+
+    // Current heading and speed (as returned by GPS - requires ASV to move)
     measurement_msg.courseoverground = parsed_gps.heading;
     measurement_msg.speedoverground = parsed_gps.speed;
+
+    // Wind Measurement
+    double true_wind_speed = calculateTrueWindSpeed(parsed_wind.speed, parsed_wind.angle, parsed_gps.speed, parsed_gps.heading);
+
+    // Update cumulative wind speed and measurement count
+    cumulative_wind_speed += true_wind_speed;
+    wind_measurement_count++;
+
+    // Calculate the running average
+    running_average_wind_speed = cumulative_wind_speed / wind_measurement_count;
+
+    // Adjust the true wind speed by subtracting the running average
+    measurement_msg.windspeed = true_wind_speed - running_average_wind_speed;
+
+    // Adjust the rated true wind speed by subtracting the running average
+    double rated_wind_ms = this->get_parameter("rated_wind_speed_kts").as_double() * KTS_TO_MS;
+    measurement_msg.ratedwind = rated_wind_ms - running_average_wind_speed;
 
     measurement_pub_->publish(measurement_msg);
   }
@@ -123,17 +160,48 @@ private:
       ew_distance = EARTH_RADIUS * cos(avg_lat) * (lon - lon_origin);
   }
 
+  double calculateTrueWindSpeed(double apparentWindSpeed, double apparentWindAngle,
+                              double boatSpeed, double boatCourse) {
+    // Convert angles from degrees to radians
+    double apparentAngleRad = apparentWindAngle * M_PI / 180.0;
+    double boatCourseRad = boatCourse * M_PI / 180.0;
+
+    // Calculate components of the apparent wind relative to the boat
+    double V_ax = apparentWindSpeed * cos(apparentAngleRad);
+    double V_ay = apparentWindSpeed * sin(apparentAngleRad);
+
+    // Calculate components of the boat's velocity over ground
+    double V_bx = boatSpeed * cos(boatCourseRad);
+    double V_by = boatSpeed * sin(boatCourseRad);
+
+    // Calculate components of the true wind vector
+    double V_tx = V_ax + V_bx;
+    double V_ty = V_ay + V_by;
+
+    // Calculate the true wind speed
+    double trueWindSpeed = std::sqrt(V_tx * V_tx + V_ty * V_ty);
+
+    return trueWindSpeed;
+}
+
   double sample_time = 0.25; // filter sample time in units of seconds
   double tau = 0.5; // filter time constant in units of seconds
   double ns_distance;
   double ew_distance;
 
+  // Wind Speed Moving Average Variables
+  double cumulative_wind_speed; // Cumulative sum of all true wind speeds
+  uint64_t wind_measurement_count; // Count of wind speed measurements
+  double running_average_wind_speed; // Current running average of true wind speeds
+
   rclcpp::Subscription<::messages::msg::Wind>::SharedPtr wind_sub_;
   rclcpp::Subscription<::messages::msg::AsvGps>::SharedPtr gps_sub_;
+  rclcpp::Subscription<::messages::msg::PowerLevel>::SharedPtr power_sub_;
   rclcpp::Publisher<::messages::msg::SensorData>::SharedPtr measurement_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   wind_data parsed_wind;
   gps_data parsed_gps;
+  pwr_data parsed_pwr;
 };
 
 int main(int argc, char* argv[])

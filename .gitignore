@@ -58,3 +58,6 @@ log/
 
 .julia/
 .vscode/
+.rosbags/
+.jld2/
+.images/

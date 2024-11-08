@@ -36,7 +36,7 @@ struct GPSMessage
   // size of data section of udp packet (no udp header info) send by boat (inlcudes checksum and header bytes)
   static const size_t buffer_size{ 45 };
   // sink id for message (80 is backup, 77 is regular)
-  static const unsigned char sink_id{ 80 };
+  static const unsigned char sink_id{ 77 };
 
   /**
    * @brief Parses the provided byte buffer according to the SeaTrac GPS udp

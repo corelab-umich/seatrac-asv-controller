@@ -1,8 +1,4 @@
 services:
-  # test:
-  #   build: .
-  #   command: bash
-  #   tty: true
   synth_data:
     build: ./
     command: ros2 run asv_controller synthetic_data_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}

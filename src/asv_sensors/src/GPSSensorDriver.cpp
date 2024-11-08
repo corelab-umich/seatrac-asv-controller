@@ -44,8 +44,8 @@ void GPSSensorDriver::callback(const std_msgs::msg::ByteMultiArray::SharedPtr ra
 
   auto asv_gps_ros_msg = ::messages::msg::AsvGps{};
   asv_gps_ros_msg.header.stamp = nav_sat_msg.header.stamp;
-  asv_gps_ros_msg.latitude = asv_gps_msg.latitude;
-  asv_gps_ros_msg.longitude = asv_gps_msg.longitude;
+  asv_gps_ros_msg.latitude = to_degrees(asv_gps_msg.latitude);
+  asv_gps_ros_msg.longitude = to_degrees(asv_gps_msg.longitude);
   asv_gps_ros_msg.kts = asv_gps_msg.kts;
   asv_gps_ros_msg.heading = asv_gps_msg.heading;
   asv_gps_ros_msg.current_kts = asv_gps_msg.current_kts;

@@ -84,6 +84,14 @@ std::vector<unsigned char> short_to_bytes(short num, bool little_endian = true);
 std::vector<unsigned char> ushort_to_bytes(unsigned short num, bool little_endian = true);
 
 /**
+ * @brief converts the provided float into into a byte buffer
+ * @param num float to convert
+ * @param little_endian endian-ness of the data to encode. true by default
+ * @return byte buffer populated with provided float
+ */
+std::vector<unsigned char> float_to_bytes(float num, bool little_endian = true);
+
+/**
  * @brief converts the provided double into into a byte buffer
  * @param num double to convert
  * @param little_endian endian-ness of the data to encode. true by default

@@ -77,8 +77,8 @@ class JuliaPublisher(Node):
         kt = self.jlstore("kt", jl.Matern(1/2, sigma_t, lt))
         ks = self.jlstore("ks", jl.Matern(1/2, sigma_s, ls))
         dx = self.jlstore("dx", 0.10)
-        xs = jl.seval("xs = 0:dx:1.4")
-        ys = jl.seval("ys = 0:dx:6.5")
+        xs = jl.seval("xs = 0:dx:1.6")
+        ys = jl.seval("ys = 0:dx:1.9")
 
         self.synthetic_data = jl.seval("STGPKF.generate_spatiotemporal_process(xs, ys, dt_min, (T_end - T_begin)*60.0, ks, kt)")
         # print(self.synthetic_data.ts[2])
@@ -95,7 +95,7 @@ class JuliaPublisher(Node):
         self.latitude = 0.0
         self.longitude = 0.0
         self.pose_x = 0.75
-        self.pose_y = 3.0
+        self.pose_y = 0.75
         self.state_of_charge = 0.0
         self.windspeed = 0.0
         self.sim_time = self.synthetic_data.ts[0]
@@ -133,6 +133,7 @@ class JuliaPublisher(Node):
             day_of_year = self.get_day_of_year(now)
             self.sim_time += (self.timer_period / 60.0) # (time step [s] -> min)
 
+
             """ Update Position """
             # Convert speed from kts to ms & pull heading
             speed = self.speed_command * K_KTS2MS
@@ -140,19 +141,20 @@ class JuliaPublisher(Node):
             heading = self.heading_command
 
             # update x/y position
-            self.pose_x += (speed*np.cos(np.radians(heading))) * self.timer_period * K_M2KM
-            self.pose_y += (speed*np.sin(np.radians(heading))) * self.timer_period * K_M2KM
+            self.pose_x += (speed*np.sin(np.radians(heading))) * self.timer_period * K_M2KM
+            self.pose_y += (speed*np.cos(np.radians(heading))) * self.timer_period * K_M2KM
             new_data.pose_x = self.pose_x
             new_data.pose_y = self.pose_y
 
-            """ Update Vehicle State of Charge """
-            # TODO: FIGURE OUT HOW TO GET THIS TO WORK
+            """ Update Vehicle State of Charge """            
             try:
-                self.state_of_charge = self.soc_controller.batterymodel(int(day_of_year), self.sim_time / 60.0, 35.75, speed, self.state_of_charge)
+                self.state_of_charge = self.soc_controller.batterymodel(int(day_of_year), self.sim_time / 60.0, 35.75, speed, self.state_of_charge, self.timer_period / (60.0 * 60.0))
             except:
                 self.get_logger().error('Battery Model Failure')
                             
             new_data.stateofcharge = self.state_of_charge
+
+
             """ Update Windspeed """
             self.get_logger().debug('Interpolating wind data')
             try:

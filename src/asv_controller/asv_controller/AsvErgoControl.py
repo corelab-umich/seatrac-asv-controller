@@ -1,11 +1,12 @@
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from juliacall import Main as jl
 import numpy as np
 from datetime import datetime
 from tzlocal import get_localzone
 
-from messages.msg import Commands, SensorData
+from messages.msg import Commands, SensorData, ParamEst
 
 from rclpy.parameter import Parameter
 from rcl_interfaces.msg import SetParametersResult
@@ -22,6 +23,8 @@ class ASVErgoControl(Node):
                 self.controller_enable = param.value
                 if self.controller_enable:
                     self.controller_init()
+                else:
+                    self.controller_initalized = False
             if param.name == 'mission_duration_hrs' and param.type_ == Parameter.Type.DOUBLE:
                 self.mission_duration_hrs = param.value
             if param.name == 'terminal_soc' and param.type_ == Parameter.Type.DOUBLE:
@@ -36,6 +39,12 @@ class ASVErgoControl(Node):
 
     def __init__(self):
         super().__init__('asv_ergo_control')
+
+        qos_profile = QoSProfile(
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10,  # Adjust depth based on your needs
+            reliability=QoSReliabilityPolicy.BEST_EFFORT
+        )
 
         """ Timezone/Clock Setup """
         self.local_tz = get_localzone()
@@ -53,8 +62,6 @@ class ASVErgoControl(Node):
         self.ki = 0.01
         self.declare_parameter('speed_kd', 0.5)
         self.kd = 0.5
-        # TODO: Add Speed & Heading Override Parameters
-        # TODO: Make rated speed a parameter
 
         """ Parameter Update Function """
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -64,7 +71,7 @@ class ASVErgoControl(Node):
         self.jlstore = jl.seval("(k, v) -> (@eval $(Symbol(k)) = $v; return)")
 
         # Importing packages
-        jl.seval("using LinearAlgebra, Random, Statistics, Plots, StaticArrays, Interpolations, LazySets, SpatiotemporalGPs, JLD2, LinearInterpolations")
+        jl.seval("using LinearAlgebra, Random, Statistics, Plots, StaticArrays, Interpolations, LazySets, SpatiotemporalGPs, JLD2, LinearInterpolations, Dates")
 
         # Importing modules
         self.soc_controller = jl.include("src/asv_controller/jl_src/SOC_Controller.jl")
@@ -78,15 +85,55 @@ class ASVErgoControl(Node):
         self.control_class = jl.include("src/asv_controller/jl_src/Controller.jl")
         self.sim_vars = jl.include("src/asv_controller/jl_src/simulator_ST.jl")
 
+        # JLD2 Saving
+        self.file_counter = 0
+        current_time = datetime.now()
+        self.time_string = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.filename = f"/root/jld2_files/{self.time_string}_jlvars_{self.file_counter}.jld2"
+        filename_timer = 60*15 # minutes -> seconds
+        self.filetimer = self.create_timer(filename_timer, self.filename_update)
+        jl.seval("""
+            function save_selected_variables(fname, vars_to_save)
+                group_name = Dates.format(now(), "yyyyMMdd_HH-mm-ss.sSSS")
+
+                # Convert variable names to Symbols and filter defined variables
+                workspace_vars = Dict(
+                    string(var) => getfield(Main, Symbol(var))
+                    for var in vars_to_save
+                    if isdefined(Main, Symbol(var)) && !(typeof(getfield(Main, Symbol(var))) <: Function || typeof(getfield(Main, Symbol(var))) <: Module)
+                )
+                
+                # Save to a JLD2 file with compression, under a specified group
+                jldopen(fname, "a", compress=true) do fid
+                    group = JLD2.Group(fid, group_name)
+                    for (name, value) in workspace_vars
+                        group[name] = value
+                    end
+                end
+            end
+            """)
+
+
         """ Subscribe to Sensor Data """
         self.subscription = self.create_subscription(
             SensorData,
             'measurement_packet',
             self.measurement_aggregator,
-            10)
+            qos_profile)
         self.subscription  # prevent unused variable warning
         self.state_of_charge = None
         self.position_xy = None
+
+        """ Subscribe to Parameter Estimates """
+        self.param_sub = self.create_subscription(
+            ParamEst,
+            'param_estimates',
+            self.param_update,
+            qos_profile)
+        self.spatial_length = 0.0
+        self.temporal_length = 0.0
+        self.spatial_deviation = 0.0
+        self.temporal_deviation = 0.0
 
         """ SOC Controller Variables """
         # Time variables
@@ -103,6 +150,8 @@ class ASVErgoControl(Node):
         self.error = 0.0
 
         """ Ergodic Controller Variables """
+        self.controller_initalized = False
+
         # KF Variables
         self.stgpkfprob = None
         self.kt = None
@@ -128,11 +177,22 @@ class ASVErgoControl(Node):
         self.target_q_matrix = None
 
         # Rated Speed
-        self.w_rated = 2.25 # TODO: Make a parameter
+        self.w_rated = None
+
+        """ Filter Updates """
+        timer_filter = 5 # seconds
+        self.filter_timer = self.create_timer(timer_filter, self.filter_update)
+
+        # Create array to store measurements for filtering
+        self.jlstore("sigma_meas", 0.25) # TODO: Make adjustable parameter for sensor noise
+        self.sigma_meas = jl.seval("sigma_meas")
+        jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
+        jl.seval("measurement_w = Vector{Float64}()")
+        jl.seval("measure_sigma = sigma_meas")
 
         """ Control Loop on Timer """
         self.publisher_ = self.create_publisher(Commands, 'asv_command', 10)
-        timer_period = 0.1 # seconds
+        timer_period = 1 # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
     
     def timer_callback(self):
@@ -174,13 +234,16 @@ class ASVErgoControl(Node):
             msg.speed_kts = 0.0
             msg.heading = 0.0
             self.publisher_.publish(msg)
+
+        """ Update JLD2 File with workspace vars """
+        # jl.save_all_workspace_variables(self.filename)
+
         pass
     
     def controller_init(self):
         self.get_logger().debug('Initializing Controller')
 
         """ Initialize SOC Controller"""
-
         # Define variables
         self.get_logger().debug('Initializing SOC Controller')
         now = datetime.now(self.local_tz)
@@ -190,7 +253,6 @@ class ASVErgoControl(Node):
         self.ts_hrs = [self.T_begin + i * self.dt_hrs for i in range(int((self.T_end - self.T_begin)/ self.dt_hrs) + 1)]
         soc_begin = self.state_of_charge
         soc_end = self.terminal_soc
-        # TODO: Create a reference plot for SOC vs Time under ideal case to determine final SOC target
 
         # Compute SOC barriers and target profile
         ucbf = self.soc_controller.compute_ucbf(self.ts_hrs, self.dt_hrs)
@@ -216,9 +278,9 @@ class ASVErgoControl(Node):
             # Create domain arrays
             self.kt = self.jlstore("kt", jl.Matern(1/2, sigma_t, lt))
             self.ks = self.jlstore("ks", jl.Matern(1/2, sigma_s, ls))
-            self.dx = self.jlstore("dx", 0.10)
-            self.xs = jl.seval("xs = 0:dx:1.4")
-            self.ys = jl.seval("ys = 0:dx:6.5")
+            self.dx = self.jlstore("dx", 0.05)
+            self.xs = jl.seval("xs = 0:dx:1.6")
+            self.ys = jl.seval("ys = 0:dx:1.9")
 
             # Create grid point variable
             self.grid_points = jl.seval("grid_points = vec([@SVector[x, y] for x in xs, y in ys])")
@@ -259,8 +321,16 @@ class ASVErgoControl(Node):
             self.jlstore("current_x", self.position_xy[0])
             self.jlstore("current_y", self.position_xy[1])
             jl.seval("coords = [[@SVector[current_x, current_y]]]")
+
+            # Clear measure vecs
+            jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
+            jl.seval("measurement_w = Vector{Float64}()")
+
+            # Let us know controller finished enabling
+            self.controller_initalized = True
         except:
             self.get_logger().error("Ergodic Initialization Failed")
+        
         pass
 
     def ergo_controller(self, speed):
@@ -270,6 +340,7 @@ class ASVErgoControl(Node):
         jl.seval("traj = vcat(coords...)")
 
         self.jlstore("speed", speed)
+        self.jlstore("w_rated", self.w_rated)
         jl.seval("speeds, new_q_target = Controller.ergo_controller_weighted_2(coords[end], M, w_rated, JordanLakeDomain.convex_polygon, target_q, Nx, Ny, xs, ys; ergo_grid=ergo_grid, ergo_q_map=ergo_q_map, traj=traj, umax=speed)")
 
 
@@ -297,8 +368,96 @@ class ASVErgoControl(Node):
         return speed, target_soc
     
     def measurement_aggregator(self, msg):
+        # Store state of charge
         self.state_of_charge = msg.stateofcharge
+
+        # Store Position
         self.position_xy = [msg.pose_x, msg.pose_y]
+        
+        # Add position to measurement vector for KF
+        self.jlstore("temp_x", self.position_xy[0])
+        self.jlstore("temp_y", self.position_xy[1])
+        jl.seval("push!(measurement_pts, @SVector[temp_x, temp_y])")
+
+        # Add windspeed to measurement vector for KF
+        self.jlstore("temp_speed", msg.windspeed)
+        jl.seval("push!(measurement_w, temp_speed)")
+
+        self.w_rated = msg.ratedwind
+
+        pass
+
+    def param_update(self, msg):
+        self.spatial_length = msg.spatial_length
+        self.temporal_length = msg.temporal_length
+        self.spatial_deviation = msg.spatial_deviation
+        self.temporal_deviation = msg.temporal_deviation
+
+        # Generate new STGPKF state
+        try:
+            self.kt = self.jlstore("kt", jl.Matern(1/2, self.temporal_deviation, self.temporal_length))
+            self.ks = self.jlstore("ks", jl.Matern(1/2, self.spatial_deviation, self.spatial_length))
+            self.dx = self.jlstore("dx", 0.05)
+            self.stgpkfprob = jl.seval("problem = STGPKFProblem(grid_points, ks, kt, dt_min)")
+            self.ngpkf_grid = jl.seval("ngpkf_grid = NGPKF.NGPKFGrid(xs, ys, ks)")
+            jl.seval("ergo_grid = SimulatorST.ErgoGrid(ngpkf_grid, (256,256))")
+            self.ergo_grid = jl.seval("ergo_grid")  
+        except:
+            self.get_logger().error('Param Estimation Failure')
+        pass
+
+    def filter_update(self):
+        if self.controller_initalized:
+            jl.seval("measure_sigma = (sigma_meas^2) * I(length(measurement_w))")
+
+            # Update estimate using KF
+            jl.seval("state_correction = stgpkf_correct(problem, state, measurement_pts, measurement_w, measure_sigma)")
+            jl.seval("state = stgpkf_predict(problem, state_correction)")
+            self.stgpkf_state = jl.seval("state")
+            jl.seval("est = STGPKF.get_estimate(problem, state)")
+            jl.seval("w_hat = reshape(est, length(xs), length(ys))")
+            self.w_hat = jl.seval("w_hat")
+
+            # update the clarity map
+            jl.seval("qs = STGPKF.get_estimate_clarity(problem, state)")
+            self.qs = jl.seval("qs")
+            jl.seval("q_map = reshape(qs, length(xs), length(ys))")
+            jl.seval("ergo_q_map = SimulatorST.ngpkf_to_ergo(ngpkf_grid, ergo_grid, q_map)")
+            self.ergo_q_map = jl.seval("ergo_q_map")
+            self.jlstore("target_q", self.target_q)
+
+            jl.seval("M = w_hat")
+            self.M = jl.seval("M")
+
+            # Save variable states to JLD2 file
+            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q", "measurement_pts", "measurement_w"]
+            jl.save_selected_variables(self.filename, variables_to_save)  
+
+            # Save plots
+            jl.seval("""
+                        polygon_vertices = hcat(JordanLakeDomain.convex_polygon.vertices, JordanLakeDomain.convex_polygon.vertices[:, 1])
+                        heatmap(xs, ys, q_map', clims=(0, 1))
+                        plot!(polygon_vertices[1, :], polygon_vertices[2, :], seriestype=:shape, fillalpha=0.0, label="", lw = 2, linecolor = "green")
+                        plot!(legend=false)
+                        xlabel!("x [km]")
+                        ylabel!("y [km]")
+                        title!("q_map")
+                        savefig("/root/images/q_map.png")
+                     """)      
+            jl.seval("""
+                        polygon_vertices = hcat(JordanLakeDomain.convex_polygon.vertices, JordanLakeDomain.convex_polygon.vertices[:, 1])
+                        heatmap(xs, ys, w_hat', cmap = :balance, clims=(-5, 5))
+                        plot!(polygon_vertices[1, :], polygon_vertices[2, :], seriestype=:shape, fillalpha=0.0, label="", lw = 3, linecolor = "green")
+                        plot!(legend=false)
+                        xlabel!("x [km]")
+                        ylabel!("y [km]")
+                        title!("w_hat")
+                        savefig("/root/images/w_hat.png")
+                     """)
+
+        # Clear measure vecs
+        jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
+        jl.seval("measurement_w = Vector{Float64}()")
         pass
 
     def get_day_of_year(self, now):
@@ -316,9 +475,13 @@ class ASVErgoControl(Node):
         seconds_fraction = now.second / 3600.0
         return hours + minutes_fraction + seconds_fraction
 
-   
+    def filename_update(self):
+        self.file_counter += 1
+        self.filename = f"/root/jld2_files/{self.time_string}_jlvars_{self.file_counter}.jld2"
+        pass
+
     def heading_calc(self, ux, uy):
-        heading = np.arctan2(uy, ux) * (180/np.pi)
+        heading = np.degrees(np.arctan2(ux, uy))
         return (heading + 360) % 360
 
 def main(args=None):

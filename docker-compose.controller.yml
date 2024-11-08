@@ -2,16 +2,29 @@ services:
   asv_ergo_control:
     build: ./
     command: ros2 run asv_controller asv_ergo_control  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.jld2/:/root/jld2_files
+      - ./.images/:/root/images
+  
   param_estimator:
     build: ./
     command: ros2 run asv_controller param_estimator --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
 
-# services:
-#   asv_ergo_control:
-#     build: ./
-#     # volumes:
-#     #   - ./.julia:/root/.julia
-#     command: ros2 run asv_controller asv_ergo_control  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-#   param_estimator:
-#     build: ./
-#     command: ros2 run asv_controller param_estimator --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+  q_map_pub:
+    build: ./
+    command: ros2 run asv_controller q_map_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.images/:/root/images
+
+  w_hat_pub:
+    build: ./
+    command: ros2 run asv_controller w_hat_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.images/:/root/images
+
+  command_publisher:
+    build: ./
+    network_mode: "host"
+    # ports:
+    #   - "${UDP_PORT}:${PUB_PORT}/udp"
+    command: ros2 run asv_sensors control_command_publisher --ros-args -p ip_address:=${BOAT_IP} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
