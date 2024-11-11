@@ -94,7 +94,7 @@ class ASVErgoControl(Node):
         self.filetimer = self.create_timer(filename_timer, self.filename_update)
         jl.seval("""
             function save_selected_variables(fname, vars_to_save)
-                group_name = Dates.format(now(), "yyyyMMdd_HH-mm-ss.sSSS")
+                group_name = Dates.format(now(), "yyyymmdd_HH-MM-ss.sSSS")
 
                 # Convert variable names to Symbols and filter defined variables
                 workspace_vars = Dict(

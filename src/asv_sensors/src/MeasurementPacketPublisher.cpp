@@ -127,6 +127,8 @@ private:
     // Wind Measurement
     double true_wind_speed = calculateTrueWindSpeed(parsed_wind.speed, parsed_wind.angle, parsed_gps.speed, parsed_gps.heading);
 
+    measurement_msg.truewind = true_wind_speed;
+
     // Update cumulative wind speed and measurement count
     cumulative_wind_speed += true_wind_speed;
     wind_measurement_count++;
@@ -162,21 +164,25 @@ private:
 
   double calculateTrueWindSpeed(double apparentWindSpeed, double apparentWindAngle,
                               double boatSpeed, double boatCourse) {
+
+    // Get apparent wind angle in world frame
+    double apparentAngleWorld = fmod(boatCourse + apparentWindAngle, 360.0);
+    
     // Convert angles from degrees to radians
-    double apparentAngleRad = apparentWindAngle * M_PI / 180.0;
+    double apparentAngleRad = apparentAngleWorld * M_PI / 180.0;
     double boatCourseRad = boatCourse * M_PI / 180.0;
 
     // Calculate components of the apparent wind relative to the boat
-    double V_ax = apparentWindSpeed * cos(apparentAngleRad);
-    double V_ay = apparentWindSpeed * sin(apparentAngleRad);
+    double V_ax = apparentWindSpeed * sin(apparentAngleRad);
+    double V_ay = apparentWindSpeed * cos(apparentAngleRad);
 
     // Calculate components of the boat's velocity over ground
-    double V_bx = boatSpeed * cos(boatCourseRad);
-    double V_by = boatSpeed * sin(boatCourseRad);
+    double V_bx = boatSpeed * sin(boatCourseRad);
+    double V_by = boatSpeed * cos(boatCourseRad);
 
     // Calculate components of the true wind vector
-    double V_tx = V_ax + V_bx;
-    double V_ty = V_ay + V_by;
+    double V_tx = V_bx - V_ax;
+    double V_ty = V_by - V_ay;
 
     // Calculate the true wind speed
     double trueWindSpeed = std::sqrt(V_tx * V_tx + V_ty * V_ty);
