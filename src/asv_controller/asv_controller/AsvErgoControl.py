@@ -344,7 +344,7 @@ class ASVErgoControl(Node):
         jl.seval("speeds, new_q_target = Controller.ergo_controller_weighted_2(coords[end], M, w_rated, JordanLakeDomain.convex_polygon, target_q, Nx, Ny, xs, ys; ergo_grid=ergo_grid, ergo_q_map=ergo_q_map, traj=traj, umax=speed)")
 
 
-        self.q_target = jl.seval("new_q_target")
+        self.target_q = jl.seval("new_q_target")
         speeds = jl.seval("speeds[end]")
         
         return speeds[0], speeds[1]
