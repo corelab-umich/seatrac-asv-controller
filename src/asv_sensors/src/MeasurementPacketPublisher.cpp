@@ -140,7 +140,6 @@ private:
   }
 
   // Function to convert raw wind speed to normal distribution for KF
-  // TODO: Update the parameters for weibull distribution
   double raw_to_normal(double raw_wind){
     double lambda = 5.5781970;
     double k = 2.3007;

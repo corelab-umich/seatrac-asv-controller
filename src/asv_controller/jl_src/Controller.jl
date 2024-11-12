@@ -87,7 +87,10 @@ function ergo_controller_weighted_2(xs, Mean, w_rated_val, convex_polygon, targe
     w_rated *= w_rated_val
 
     #   Compute the target matrix 
-    lambda_param = 0.05
+    # lambda_param = 0.05
+    lambda_param = 0.5
+    # lambda_param = 0.5 -> 1 stddev off = 61%
+    # lambda_param = 1 -> 1 stddev off = 37%
     delta = -lambda_param*((Mean - w_rated).^2)
     q_target_temp = target_q*(exp.(delta)) 
 
