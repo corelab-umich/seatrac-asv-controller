@@ -139,6 +139,8 @@ private:
     measurement_pub_->publish(measurement_msg);
   }
 
+  // Function to convert raw wind speed to normal distribution for KF
+  // TODO: Update the parameters for weibull distribution
   double raw_to_normal(double raw_wind){
     double lambda = 0.0;
     double k = 0.0;
@@ -206,6 +208,7 @@ private:
       ew_distance = EARTH_RADIUS * cos(avg_lat) * (lon - lon_origin);
   }
 
+  // Function to calculate the true wind speed from apparent wind and boat speed
   double calculateTrueWindSpeed(double apparentWindSpeed, double apparentWindAngle,
                               double boatSpeed, double boatCourse) {
 
