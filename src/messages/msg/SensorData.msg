@@ -16,3 +16,4 @@ float64 speedoverground
 # Wind Measurement
 float64 windspeed
 float64 ratedwind
+float64 truewind

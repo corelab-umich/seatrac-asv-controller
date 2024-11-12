@@ -94,7 +94,7 @@ class ASVErgoControl(Node):
         self.filetimer = self.create_timer(filename_timer, self.filename_update)
         jl.seval("""
             function save_selected_variables(fname, vars_to_save)
-                group_name = Dates.format(now(), "yyyyMMdd_HH-mm-ss.sSSS")
+                group_name = Dates.format(now(), "yyyymmdd_HH-MM-ss.sSSS")
 
                 # Convert variable names to Symbols and filter defined variables
                 workspace_vars = Dict(
@@ -344,7 +344,7 @@ class ASVErgoControl(Node):
         jl.seval("speeds, new_q_target = Controller.ergo_controller_weighted_2(coords[end], M, w_rated, JordanLakeDomain.convex_polygon, target_q, Nx, Ny, xs, ys; ergo_grid=ergo_grid, ergo_q_map=ergo_q_map, traj=traj, umax=speed)")
 
 
-        self.q_target = jl.seval("new_q_target")
+        self.target_q = jl.seval("new_q_target")
         speeds = jl.seval("speeds[end]")
         
         return speeds[0], speeds[1]
