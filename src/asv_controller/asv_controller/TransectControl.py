@@ -15,7 +15,7 @@ K_KTS2MS = 0.5144444444 # kts -> m/s conversion
 K_MS2KTS = 1.9438444924 # m/s -> kts conversion
 K_M2KM = 0.001 # meters -> kilometers
 
-class ASVErgoControl(Node):
+class TransectControl(Node):
 
     def parameter_callback(self, params):
         for param in params:
@@ -38,7 +38,7 @@ class ASVErgoControl(Node):
         return SetParametersResult(successful=True)
 
     def __init__(self):
-        super().__init__('asv_ergo_control')
+        super().__init__('transect_control')
 
         qos_profile = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
@@ -84,12 +84,14 @@ class ASVErgoControl(Node):
         self.boundary_avoid = jl.include("src/asv_controller/jl_src/Convex_bound_avoidance.jl")
         self.control_class = jl.include("src/asv_controller/jl_src/Controller.jl")
         self.sim_vars = jl.include("src/asv_controller/jl_src/simulator_ST.jl")
+        self.transects = jl.include('src/asv_controller/jl_src/transects.jl')
+        self.trajlib = jl.include('src/asv_controller/jl_src/TrajLib.jl')
 
         # JLD2 Saving
         self.file_counter = 0
         current_time = datetime.now()
         self.time_string = current_time.strftime("%Y-%m-%d_%H-%M-%S")
-        self.filename = f"/root/jld2_files/{self.time_string}_jlvars_{self.file_counter}.jld2"
+        self.filename = f"/root/jld2_files/{self.time_string}_transect_jlvars_{self.file_counter}.jld2"
         filename_timer = 60*15 # minutes -> seconds
         self.filetimer = self.create_timer(filename_timer, self.filename_update)
         jl.seval("""
@@ -333,9 +335,7 @@ class ASVErgoControl(Node):
         jl.seval("traj = vcat(coords...)")
 
         self.jlstore("speed", speed)
-        self.jlstore("w_rated", self.w_rated)
-        jl.seval("speeds, new_q_target = Controller.ergo_controller_weighted_2(coords[end], M, w_rated, JordanLakeDomain.convex_polygon, target_q, Nx, Ny, xs, ys; ergo_grid=ergo_grid, ergo_q_map=ergo_q_map, traj=traj, umax=speed)")
-
+        # TODO: Find heading to next waypoints
 
         self.target_q = jl.seval("new_q_target")
         speeds = jl.seval("speeds[end]")
@@ -480,7 +480,7 @@ class ASVErgoControl(Node):
 def main(args=None):
     rclpy.init(args=args)
     
-    controller = ASVErgoControl()
+    controller = TransectControl()
 
     rclpy.spin(controller)
 
