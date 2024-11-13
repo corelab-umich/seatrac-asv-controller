@@ -125,6 +125,8 @@ private:
     measurement_msg.speedoverground = parsed_gps.speed;
 
     // Wind Measurement
+    measurement_msg.apparentwindspeed = parsed_wind.speed;
+    measurement_msg.apparentwindangle = parsed_wind.angle;
     double true_wind_speed = calculateTrueWindSpeed(parsed_wind.speed, parsed_wind.angle, parsed_gps.speed, parsed_gps.heading);
 
     measurement_msg.truewind = true_wind_speed;

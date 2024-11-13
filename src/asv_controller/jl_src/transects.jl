@@ -2,6 +2,20 @@ module Transects
 
 using LinearAlgebra
 import TravelingSalesmanHeuristics
+include("jordan_lake_domain.jl")
+
+function create_points(grid_points)
+    bounded_pts = Vector{Vector{Float64}}()
+    for point in grid_points
+        if point ∈ JordanLakeDomain.convex_polygon.polygon
+            push!(bounded_pts, point)
+        end
+    end
+
+    new_jordan_pts = solve_basic(bounded_pts)
+    return new_jordan_pts
+end
+
 
 # pts is a vector of waypoints to go to
 # returns the order of visiting these points

@@ -17,3 +17,7 @@ float64 speedoverground
 float64 windspeed
 float64 ratedwind
 float64 truewind
+
+# Apparent Winds
+float64 apparentwindspeed
+float64 apparentwindangle

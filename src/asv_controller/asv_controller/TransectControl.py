@@ -151,8 +151,9 @@ class TransectControl(Node):
         self.error_sum = 0.0
         self.error = 0.0
 
-        """ Ergodic Controller Variables """
+        """ Transect Controller Variables """
         self.controller_initalized = False
+        self.current_wp_index = 1
 
         # KF Variables
         self.stgpkfprob = None
@@ -317,6 +318,11 @@ class TransectControl(Node):
             self.jlstore("current_y", self.position_xy[1])
             jl.seval("coords = [[@SVector[current_x, current_y]]]")
 
+            self.transect_xs = jl.seval("transect_xs = 0:0.3:2")
+            self.transect_ys = jl.seval("transect_ys = 0:0.3:2")
+            self.pts = jl.seval("pts = vec([[x, y] for x in xs, y in ys])")
+            self.transect_pts = jl.seval("transect_pts = Transects.create_points(pts)")
+            
             # Clear measure vecs
             jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
             jl.seval("measurement_w = Vector{Float64}()")
