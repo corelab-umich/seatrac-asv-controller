@@ -322,6 +322,7 @@ class TransectControl(Node):
             self.transect_ys = jl.seval("transect_ys = 0:0.3:2")
             self.pts = jl.seval("pts = vec([[x, y] for x in xs, y in ys])")
             self.transect_pts = jl.seval("transect_pts = Transects.create_points(pts)")
+
             
             # Clear measure vecs
             jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")

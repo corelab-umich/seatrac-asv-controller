@@ -13,8 +13,10 @@ Base.@kwdef struct ASV_Params
     v_max::Float32 = 2.315; # max boat speed in m/s 
     v_min::Float32 = 0; # min boat speed in m/s
 
-    k_h::Float32 = 50; # Hotel Load
-    k_m::Float32 = 14.92; # Motor multiplier, need to tune
+    # k_h::Float32 = 50; # Hotel Load
+    # k_m::Float32 = 14.92; # Motor multiplier, need to tune
+    k_h::Float32 = 10; # Hotel Load
+    k_m::Float32 = 83; # Motor multiplier, need to tune
 end
 
 boat = ASV_Params();

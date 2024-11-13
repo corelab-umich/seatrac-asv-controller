@@ -210,13 +210,13 @@ class ASVErgoControl(Node):
                 self.get_logger().error('Speed Controller Error')
 
             """ Get speeds from ergo controller """
-            
-            try:
-               speed_x, speed_y = self.ergo_controller(speed)
-            except:
-               speed_x = speed
-               speed_y = 0.0
-               self.get_logger().error('Ergodic Controller Error')
+            speed_x, speed_y = self.ergo_controller(speed)
+            # try:
+            #    speed_x, speed_y = self.ergo_controller(speed)
+            # except:
+            #    speed_x = speed
+            #    speed_y = 0.0
+            #    self.get_logger().error('Ergodic Controller Error')
 
             """ Convert speeds to heading """
             try:
@@ -337,7 +337,7 @@ class ASVErgoControl(Node):
         jl.seval("speeds, new_q_target = Controller.ergo_controller_weighted_2(coords[end], M, w_rated, JordanLakeDomain.convex_polygon, target_q, Nx, Ny, xs, ys; ergo_grid=ergo_grid, ergo_q_map=ergo_q_map, traj=traj, umax=speed)")
 
 
-        self.target_q = jl.seval("new_q_target")
+        self.target_q_matrix = jl.seval("new_q_target")
         speeds = jl.seval("speeds[end]")
         
         return speeds[0], speeds[1]
@@ -417,13 +417,13 @@ class ASVErgoControl(Node):
             jl.seval("q_map = reshape(qs, length(xs), length(ys))")
             jl.seval("ergo_q_map = SimulatorST.ngpkf_to_ergo(ngpkf_grid, ergo_grid, q_map)")
             self.ergo_q_map = jl.seval("ergo_q_map")
-            self.jlstore("target_q", self.target_q)
+            self.jlstore("target_q_matrix", self.target_q_matrix)
 
             jl.seval("M = w_hat")
             self.M = jl.seval("M")
 
             # Save variable states to JLD2 file
-            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q", "measurement_pts", "measurement_w"]
+            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q_matrix", "measurement_pts", "measurement_w"]
             jl.save_selected_variables(self.filename, variables_to_save)  
 
             # Save plots
