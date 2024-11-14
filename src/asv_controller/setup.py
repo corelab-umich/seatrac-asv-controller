@@ -24,7 +24,8 @@ setup(
             'asv_ergo_control = asv_controller.AsvErgoControl:main',
             'param_estimator = asv_controller.ParamEstimator:main',
             'q_map_pub = asv_controller.QMapPub:main',
-            'w_hat_pub = asv_controller.WHatPub:main'
+            'w_hat_pub = asv_controller.WHatPub:main',
+            'target_q_map_pub = asv_controller.TargetQMapPub:main'
         ],
     },
 )

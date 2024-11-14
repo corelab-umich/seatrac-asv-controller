@@ -16,6 +16,12 @@ services:
     volumes:
       - ./.images/:/root/images
 
+  target_q_map_pub:
+    build: ./
+    command: ros2 run asv_controller target_q_map_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.images/:/root/images
+
   w_hat_pub:
     build: ./
     command: ros2 run asv_controller w_hat_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}

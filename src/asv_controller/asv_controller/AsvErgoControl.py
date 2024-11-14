@@ -144,6 +144,7 @@ class ASVErgoControl(Node):
         self.T_end = None
         self.ts_hrs = None
         self.soc_target = None
+        self.target_soc = None
 
         # Speed Controller variables
         self.error_sum = 0.0
@@ -184,7 +185,7 @@ class ASVErgoControl(Node):
         self.filter_timer = self.create_timer(timer_filter, self.filter_update)
 
         # Create array to store measurements for filtering
-        self.jlstore("sigma_meas", 0.25) # TODO: Make adjustable parameter for sensor noise
+        self.jlstore("sigma_meas", 0.25)
         self.sigma_meas = jl.seval("sigma_meas")
         jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
         jl.seval("measurement_w = Vector{Float64}()")
@@ -343,13 +344,13 @@ class ASVErgoControl(Node):
         return speeds[0], speeds[1]
 
     def speed_controller(self):
-        # Get current SOC level - TODO: Implement this routine
         current_soc = self.state_of_charge
 
         now = datetime.now(self.local_tz)
         current_hrs = self.get_fractional_hours(now)
         idx = min(range(len(self.ts_hrs)), key=lambda i: abs(self.ts_hrs[i] - current_hrs))
         target_soc = self.soc_target[idx]
+        self.target_soc = target_soc
 
         # PID
         prev_error = self.error
@@ -422,8 +423,11 @@ class ASVErgoControl(Node):
             jl.seval("M = w_hat")
             self.M = jl.seval("M")
 
+            self.jlstore("current_soc", self.state_of_charge)
+            self.jlstore("soc_target", self.target_soc)
+
             # Save variable states to JLD2 file
-            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q_matrix", "measurement_pts", "measurement_w"]
+            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q_matrix", "measurement_pts", "measurement_w", "current_soc", "soc_target"]
             jl.save_selected_variables(self.filename, variables_to_save)  
 
             # Save plots
@@ -434,7 +438,7 @@ class ASVErgoControl(Node):
                         plot!(legend=false)
                         xlabel!("x [km]")
                         ylabel!("y [km]")
-                        title!("q_map")
+                        title!("Clarity")
                         savefig("/root/images/q_map.png")
                      """)      
             jl.seval("""
@@ -444,9 +448,19 @@ class ASVErgoControl(Node):
                         plot!(legend=false)
                         xlabel!("x [km]")
                         ylabel!("y [km]")
-                        title!("w_hat")
+                        title!("Estimate")
                         savefig("/root/images/w_hat.png")
                      """)
+            jl.seval("""
+                        polygon_vertices = hcat(JordanLakeDomain.convex_polygon.vertices, JordanLakeDomain.convex_polygon.vertices[:, 1])
+                        heatmap(xs, ys, target_q_matrix', clims=(0, 1))
+                        plot!(polygon_vertices[1, :], polygon_vertices[2, :], seriestype=:shape, fillalpha=0.0, label="", lw = 2, linecolor = "green")
+                        plot!(legend=false)
+                        xlabel!("x [km]")
+                        ylabel!("y [km]")
+                        title!("Target Clarity")
+                        savefig("/root/images/target_q_map.png")
+                     """)   
 
         # Clear measure vecs
         jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
