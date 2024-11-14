@@ -1,6 +1,6 @@
 using Pkg
 # pkg"instantiate"
-pkg"add AbstractGPs DataFrames Dates DifferentialEquations Distributions FFTW Geodesy Interpolations JLD2 Kaleido Kaleido_jll KernelFunctions LaTeXStrings LazySets LinearAlgebra LinearInterpolations LsqFit NCDatasets PlotlyJS Plots ProgressLogging Random RecipesBase https://github.com/dev10110/SpatiotemporalGPs.jl.git StaticArrays StatsBase TimeZones PythonCall"
+pkg"add AbstractGPs DataFrames Dates DifferentialEquations Distributions FFTW Geodesy Interpolations JLD2 Kaleido Kaleido_jll KernelFunctions LaTeXStrings LazySets LinearAlgebra LinearInterpolations LsqFit NCDatasets PlotlyJS Plots ProgressLogging Random RecipesBase https://github.com/dev10110/SpatiotemporalGPs.jl.git StaticArrays StatsBase TimeZones TravelingSalesmanHeuristics PythonCall"
 #pkg"add DataFrames"
 #pkg"add Dates"
 #pkg"add DifferentialEquations"

@@ -146,6 +146,7 @@ class TransectControl(Node):
         self.T_end = None
         self.ts_hrs = None
         self.soc_target = None
+        self.target_soc = None
 
         # Speed Controller variables
         self.error_sum = 0.0
@@ -153,7 +154,7 @@ class TransectControl(Node):
 
         """ Transect Controller Variables """
         self.controller_initalized = False
-        self.current_wp_index = 1
+        self.current_wp_index = 0
 
         # KF Variables
         self.stgpkfprob = None
@@ -212,21 +213,22 @@ class TransectControl(Node):
                 target_soc = -6908.00
                 self.get_logger().error('Speed Controller Error')
 
-            """ Get speeds from ergo controller """
-            
-            try:
-               speed_x, speed_y = self.ergo_controller(speed)
-            except:
-               speed_x = speed
-               speed_y = 0.0
-               self.get_logger().error('Ergodic Controller Error')
+            """ Get heading from transect controller """
+            heading = self.transect_controller(speed)
+            # speed_x, speed_y = self.transect_controller(speed)
+            # try:
+            #    speed_x, speed_y = self.transect_controller(speed)
+            # except:
+            #    speed_x = speed
+            #    speed_y = 0.0
+            #    self.get_logger().error('Ergodic Controller Error')
 
             """ Convert speeds to heading """
-            try:
-                heading = self.heading_calc(speed_x, speed_y)
-            except:
-                heading = 0
-                self.get_logger().error('Heading Calculation Error')
+            # try:
+            #     heading = self.heading_calc(speed_x, speed_y)
+            # except:
+            #     heading = 0
+            #     self.get_logger().error('Heading Calculation Error')
 
             """ Publish message with control command """
             msg.speed_kts = speed * K_MS2KTS
@@ -335,28 +337,38 @@ class TransectControl(Node):
         
         pass
 
-    def ergo_controller(self, speed):
+    def transect_controller(self, speed):
         self.jlstore("current_x", self.position_xy[0])
         self.jlstore("current_y", self.position_xy[1])
         jl.seval("push!(coords, [@SVector[current_x, current_y]])")
         jl.seval("traj = vcat(coords...)")
 
         self.jlstore("speed", speed)
-        # TODO: Find heading to next waypoints
+        pos_x = self.position_xy[0]
+        pos_y = self.position_xy[1]
 
-        self.target_q = jl.seval("new_q_target")
-        speeds = jl.seval("speeds[end]")
+        target = self.transect_pts[self.current_wp_index]
+        x_target = target[0]
+        y_target = target[1]
+        if np.sqrt(np.power(pos_x - x_target, 2) + np.power(pos_y - y_target, 2))<= 0.05:
+            self.current_wp_index += 1
+            self.current_wp_index %= len(self.transect_pts)
         
-        return speeds[0], speeds[1]
+        target = self.transect_pts[self.current_wp_index]
+        x_target = target[0]
+        y_target = target[1]
+
+        heading = self.compute_heading(pos_x, pos_y, x_target, y_target)
+        return heading[1]
 
     def speed_controller(self):
-        # Get current SOC level - TODO: Implement this routine
         current_soc = self.state_of_charge
 
         now = datetime.now(self.local_tz)
         current_hrs = self.get_fractional_hours(now)
         idx = min(range(len(self.ts_hrs)), key=lambda i: abs(self.ts_hrs[i] - current_hrs))
         target_soc = self.soc_target[idx]
+        self.target_soc = target_soc
 
         # PID
         prev_error = self.error
@@ -424,13 +436,16 @@ class TransectControl(Node):
             jl.seval("q_map = reshape(qs, length(xs), length(ys))")
             jl.seval("ergo_q_map = SimulatorST.ngpkf_to_ergo(ngpkf_grid, ergo_grid, q_map)")
             self.ergo_q_map = jl.seval("ergo_q_map")
-            self.jlstore("target_q", self.target_q)
+            self.jlstore("target_q_matrix", self.target_q_matrix)
 
             jl.seval("M = w_hat")
             self.M = jl.seval("M")
 
+            self.jlstore("current_soc", self.state_of_charge)
+            self.jlstore("soc_target", self.target_soc)
+
             # Save variable states to JLD2 file
-            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q", "measurement_pts", "measurement_w"]
+            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q_matrix", "measurement_pts", "measurement_w", "current_soc", "soc_target"]
             jl.save_selected_variables(self.filename, variables_to_save)  
 
             # Save plots
@@ -441,7 +456,7 @@ class TransectControl(Node):
                         plot!(legend=false)
                         xlabel!("x [km]")
                         ylabel!("y [km]")
-                        title!("q_map")
+                        title!("Clarity")
                         savefig("/root/images/q_map.png")
                      """)      
             jl.seval("""
@@ -451,7 +466,7 @@ class TransectControl(Node):
                         plot!(legend=false)
                         xlabel!("x [km]")
                         ylabel!("y [km]")
-                        title!("w_hat")
+                        title!("Estimate")
                         savefig("/root/images/w_hat.png")
                      """)
 
@@ -483,6 +498,23 @@ class TransectControl(Node):
     def heading_calc(self, ux, uy):
         heading = np.degrees(np.arctan2(ux, uy))
         return (heading + 360) % 360
+    
+    def compute_heading(self, x_current, y_current, x_target, y_target):
+        # Calculate the differences in x and y coordinates
+        delta_x = x_target - x_current
+        delta_y = y_target - y_current
+        
+        # Compute the heading angle in radians
+        heading_radians = np.arctan2(delta_x, delta_y)
+        
+        # Convert the angle to degrees
+        heading_degrees = np.degrees(heading_radians)
+        
+        # Ensure heading is within the range 0 to 360
+        if heading_degrees < 0:
+            heading_degrees += 360
+        
+        return heading_radians, heading_degrees
 
 def main(args=None):
     rclpy.init(args=args)

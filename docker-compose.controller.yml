@@ -5,6 +5,13 @@ services:
     volumes:
       - ./.jld2/:/root/jld2_files
       - ./.images/:/root/images
+
+  transect_control:
+    build: ./
+    command: ros2 run asv_controller transect_control  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.jld2/:/root/jld2_files
+      - ./.images/:/root/images
   
   param_estimator:
     build: ./
