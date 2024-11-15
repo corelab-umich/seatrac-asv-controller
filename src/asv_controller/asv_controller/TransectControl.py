@@ -265,7 +265,7 @@ class TransectControl(Node):
             return
         
         """ Initialize Ergodic Controller """
-        self.get_logger().debug('Initializing Ergodic Controller')
+        self.get_logger().debug('Initializing Transect Controller')
         try:
             # Hyperparameter Initialization
             sigma_t = 2.0
@@ -322,9 +322,8 @@ class TransectControl(Node):
 
             self.transect_xs = jl.seval("transect_xs = 0:0.3:2")
             self.transect_ys = jl.seval("transect_ys = 0:0.3:2")
-            self.pts = jl.seval("pts = vec([[x, y] for x in xs, y in ys])")
+            self.pts = jl.seval("pts = vec([[x, y] for x in transect_xs, y in transect_ys])")
             self.transect_pts = jl.seval("transect_pts = Transects.create_points(pts)")
-
             
             # Clear measure vecs
             jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
