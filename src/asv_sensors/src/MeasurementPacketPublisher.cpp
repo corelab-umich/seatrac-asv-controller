@@ -133,7 +133,7 @@ private:
 
     // Adjust the true wind speed to the normalized distribution
     if(std::isnan(raw_to_normal(true_wind_speed))){
-      measurement_msg.windspeed = -1.0;
+      measurement_msg.windspeed = 0.0;
     }else{
       measurement_msg.windspeed = raw_to_normal(true_wind_speed);
     }
@@ -148,7 +148,7 @@ private:
 
   // Function to convert raw wind speed to normal distribution for KF
   double raw_to_normal(double raw_wind){
-    double lambda = 5.5781970;
+    double lambda = 5.126;
     double k = 2.3007;
     double mu = 0.0;
     double std_dev = 1.0;

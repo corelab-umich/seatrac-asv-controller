@@ -451,16 +451,16 @@ class ASVErgoControl(Node):
                         title!("Estimate")
                         savefig("/root/images/w_hat.png")
                      """)
-            jl.seval("""
-                        polygon_vertices = hcat(JordanLakeDomain.convex_polygon.vertices, JordanLakeDomain.convex_polygon.vertices[:, 1])
-                        heatmap(xs, ys, target_q_matrix', clims=(0, 1))
-                        plot!(polygon_vertices[1, :], polygon_vertices[2, :], seriestype=:shape, fillalpha=0.0, label="", lw = 2, linecolor = "green")
-                        plot!(legend=false)
-                        xlabel!("x [km]")
-                        ylabel!("y [km]")
-                        title!("Target Clarity")
-                        savefig("/root/images/target_q_map.png")
-                     """)   
+            # jl.seval("""
+            #             polygon_vertices = hcat(JordanLakeDomain.convex_polygon.vertices, JordanLakeDomain.convex_polygon.vertices[:, 1])
+            #             heatmap(xs, ys, target_q_matrix', clims=(0, 1))
+            #             plot!(polygon_vertices[1, :], polygon_vertices[2, :], seriestype=:shape, fillalpha=0.0, label="", lw = 2, linecolor = "green")
+            #             plot!(legend=false)
+            #             xlabel!("x [km]")
+            #             ylabel!("y [km]")
+            #             title!("Target Clarity")
+            #             savefig("/root/images/target_q_map.png")
+            #          """)   
 
         # Clear measure vecs
         jl.seval("measurement_pts = Vector{SVector{2, Float64}}()")
