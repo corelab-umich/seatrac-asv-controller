@@ -332,7 +332,7 @@ class TransectControl(Node):
             # Let us know controller finished enabling
             self.controller_initalized = True
         except:
-            self.get_logger().error("Ergodic Initialization Failed")
+            self.get_logger().error("Transect Initialization Failed")
         
         pass
 
@@ -342,7 +342,15 @@ class TransectControl(Node):
         jl.seval("push!(coords, [@SVector[current_x, current_y]])")
         jl.seval("traj = vcat(coords...)")
 
+        # Get target Q matrix (from ergodic controller)
         self.jlstore("speed", speed)
+        self.jlstore("w_rated", self.w_rated)
+        jl.seval("speeds, new_q_target = Controller.ergo_controller_weighted_2(coords[end], M, w_rated, JordanLakeDomain.convex_polygon, target_q, Nx, Ny, xs, ys; ergo_grid=ergo_grid, ergo_q_map=ergo_q_map, traj=traj, umax=speed)")
+
+
+        self.target_q_matrix = jl.seval("new_q_target")
+
+        # Get heading to next waypoint
         pos_x = self.position_xy[0]
         pos_y = self.position_xy[1]
 
