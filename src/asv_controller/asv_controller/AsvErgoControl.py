@@ -443,7 +443,7 @@ class ASVErgoControl(Node):
                      """)      
             jl.seval("""
                         polygon_vertices = hcat(JordanLakeDomain.convex_polygon.vertices, JordanLakeDomain.convex_polygon.vertices[:, 1])
-                        heatmap(xs, ys, w_hat', cmap = :balance, clims=(-5, 5))
+                        heatmap(xs, ys, w_hat', cmap = :balance, clims=(-1, 1))
                         plot!(polygon_vertices[1, :], polygon_vertices[2, :], seriestype=:shape, fillalpha=0.0, label="", lw = 3, linecolor = "green")
                         plot!(legend=false)
                         xlabel!("x [km]")

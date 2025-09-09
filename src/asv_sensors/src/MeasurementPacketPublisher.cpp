@@ -131,24 +131,27 @@ private:
 
     measurement_msg.truewind = true_wind_speed;
 
-    // Adjust the true wind speed to the normalized distribution
-    if(std::isnan(raw_to_normal(true_wind_speed))){
-      measurement_msg.windspeed = 0.0;
-    }else{
-      measurement_msg.windspeed = raw_to_normal(true_wind_speed);
-    }
-    
-
     // Adjust the rated true wind speed by subtracting the running average
     double rated_wind_ms = this->get_parameter("rated_wind_speed_kts").as_double() * KTS_TO_MS;
     measurement_msg.ratedwind = raw_to_normal(rated_wind_ms);
+
+    // Adjust the true wind speed to the normalized distribution
+    if(std::isnan(raw_to_normal(true_wind_speed))){
+      if(true_wind_speed < rated_wind_ms){
+        measurement_msg.windspeed = -1.0;
+      }else if(true_wind_speed > rated_wind_ms){
+        measurement_msg.windspeed = 1.0;
+      }
+    }else{
+      measurement_msg.windspeed = raw_to_normal(true_wind_speed);
+    }    
 
     measurement_pub_->publish(measurement_msg);
   }
 
   // Function to convert raw wind speed to normal distribution for KF
   double raw_to_normal(double raw_wind){
-    double lambda = 5.126;
+    double lambda = 1.7947148;
     double k = 2.3007;
     double mu = 0.0;
     double std_dev = 1.0;
