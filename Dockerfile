@@ -47,10 +47,16 @@ WORKDIR /root/julia_install/
 COPY deps/install.jl .
 RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.1-linux-x86_64.tar.gz && tar zxvf julia-1.11.1-linux-x86_64.tar.gz
 RUN echo PATH="\$PATH:/root/julia_install/julia-1.11.1/bin" >> ~/.bashrc
-RUN /root/julia_install/julia-1.11.1/bin/julia install.jl
+
 # Set environment variable for JuliaCall to offline mode
-ENV PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia
-ENV PYTHON_JULIAPKG_OFFLINE=yes
+# ENV PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia
+# ENV PYTHON_JULIAPKG_OFFLINE=yes
+# ENV PYTHONCALL_CONDA_JL_DIR=/root/.julia/pyjuliapkg/.CondaPkg
+
+RUN export PYTHONCALL_CONDA_JL_DIR=/root/.julia/pyjuliapkg/.CondaPkg && \
+    export PYTHON_JULIAPKG_OFFLINE=yes && \
+    export PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia && \
+    /root/julia_install/julia-1.11.1/bin/julia install.jl
 
 WORKDIR $OVERLAY_WS
 
