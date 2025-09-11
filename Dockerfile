@@ -29,7 +29,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # install overlay dependencies
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS
-RUN apt-get update && apt-get install -y python3-pip curl wget vim tzdata ros-humble-cv-bridge
+RUN apt-get update && apt-get install -y python3-pip curl wget vim tzdata ros-humble-cv-bridge libssl-dev
 COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
 COPY deps/py_requirements.txt .
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
@@ -42,21 +42,27 @@ RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     && rm -rf /var/lib/apt/lists/*
 
 
-# Install Julia
+
+# --- Install Julia ---
 WORKDIR /root/julia_install/
 COPY deps/install.jl .
-RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.1-linux-x86_64.tar.gz && tar zxvf julia-1.11.1-linux-x86_64.tar.gz
-RUN echo PATH="\$PATH:/root/julia_install/julia-1.11.1/bin" >> ~/.bashrc
+RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.1-linux-x86_64.tar.gz \
+  && tar zxvf julia-1.11.1-linux-x86_64.tar.gz
 
-# Set environment variable for JuliaCall to offline mode
-# ENV PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia
-# ENV PYTHON_JULIAPKG_OFFLINE=yes
-# ENV PYTHONCALL_CONDA_JL_DIR=/root/.julia/pyjuliapkg/.CondaPkg
+# Add Julia to PATH for all future RUN/CMD
+ENV PATH="/root/julia_install/julia-1.11.1/bin:${PATH}"
 
-RUN export PYTHONCALL_CONDA_JL_DIR=/root/.julia/pyjuliapkg/.CondaPkg && \
-    export PYTHON_JULIAPKG_OFFLINE=yes && \
-    export PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia && \
-    /root/julia_install/julia-1.11.1/bin/julia install.jl
+# Ensure Julia uses system OpenSSL and precompile all packages/artifacts at build time
+ENV JULIA_SSL_USE_SYSTEM_LIBS=1
+ENV PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia
+ENV PYTHON_JULIAPKG_OFFLINE=yes
+ENV PYTHONCALL_CONDA_JL_DIR=/root/.julia/pyjuliapkg/.CondaPkg
+
+# Precompile Julia packages and artifacts (including install.jl)
+RUN julia install.jl && julia -e "using Pkg; Pkg.instantiate(); Pkg.precompile()"
+
+# (Optional) Set LD_LIBRARY_PATH for system libraries if needed
+ENV LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
 
 WORKDIR $OVERLAY_WS
 
