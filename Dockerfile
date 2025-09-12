@@ -1,18 +1,17 @@
 ARG FROM_IMAGE=ros:humble
 ARG OVERLAY_WS=/opt/ros/overlay_ws
 
-# multi-stage for caching
+# ----------------------------
+# Stage 1: cacher for colcon
+# ----------------------------
 FROM $FROM_IMAGE AS cacher
 
-# Convert shell into bash
 SHELL [ "/bin/bash", "-c" ]
 
-# clone overlay source
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS/src
 COPY src/ ./
 
-# copy manifests for caching
 WORKDIR /opt
 RUN mkdir -p /tmp/opt && \
     find ./ -name "package.xml" | \
@@ -20,66 +19,66 @@ RUN mkdir -p /tmp/opt && \
     find ./ -name "COLCON_IGNORE" | \
       xargs cp --parents -t /tmp/opt || true
 
-# multi-stage for building
+# ----------------------------
+# Stage 2: build environment
+# ----------------------------
 FROM $FROM_IMAGE AS builder
 
 ENV TZ=US/Eastern
 ENV DEBIAN_FRONTEND=noninteractive 
 
-# install overlay dependencies
+# ---- System dependencies ----
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS
-RUN apt-get update && apt-get install -y python3-pip curl wget vim tzdata ros-humble-cv-bridge libssl-dev
+RUN apt-get update && apt-get install -y \
+    python3-pip curl wget vim tzdata ros-humble-cv-bridge \
+ && rm -rf /var/lib/apt/lists/*
+
+# ---- ROS overlay deps ----
 COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
 COPY deps/py_requirements.txt .
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
-    apt-get update && apt-get install -y\ 
-    && rosdep install -y \
-      --from-paths \
-        src \
-      --ignore-src \
-    && pip3 install -r py_requirements.txt \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get update && \
+    rosdep install -y \
+      --from-paths src \
+      --ignore-src && \
+    pip3 install -r py_requirements.txt && \
+    rm -rf /var/lib/apt/lists/*
 
-
-
-# --- Install Julia ---
+# ----------------------------
+# Stage 3: Julia installation
+# ----------------------------
 WORKDIR /root/julia_install/
-COPY deps/install.jl .
 RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.1-linux-x86_64.tar.gz \
-  && tar zxvf julia-1.11.1-linux-x86_64.tar.gz
+    && tar zxvf julia-1.11.1-linux-x86_64.tar.gz -C /usr/local --strip-components=1 \
+    && rm julia-1.11.1-linux-x86_64.tar.gz
+ENV PATH="/usr/local/bin:$PATH"
 
-# Add Julia to PATH for all future RUN/CMD
-ENV PATH="/root/julia_install/julia-1.11.1/bin:${PATH}"
-
-
-# Ensure Julia uses system OpenSSL and precompile all packages/artifacts at build time
-ENV JULIA_SSL_USE_SYSTEM_LIBS=1
-ENV PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia
+# Environment for PythonCall / JuliaCall
+ENV JULIA_PROJECT=@.
+ENV JULIA_PKGDIR=/root/.julia
+ENV PYTHON_JULIAPKG_EXE=/usr/local/bin/julia
 ENV PYTHON_JULIAPKG_OFFLINE=yes
-ENV PYTHONCALL_CONDA_JL_DIR=/root/.julia/pyjuliapkg/.CondaPkg
-ENV JULIA_DEPOT_PATH=/root/.julia
+ENV PYTHON_JULIAPKG_IGNORE=true
 
-# Clean Julia precompiled cache to avoid version mismatch
-RUN rm -rf /root/.julia/compiled
+# Preinstall Julia packages into global v1.11 environment
+COPY deps/install.jl /root/install.jl
+RUN julia /root/install.jl
 
-# Precompile Julia packages and artifacts (including install.jl)
-RUN julia install.jl && julia -e "using Pkg; Pkg.instantiate(); Pkg.precompile()"
-
-# (Optional) Set LD_LIBRARY_PATH for system libraries if needed
-ENV LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}"
-
+# ----------------------------
+# Stage 4: ROS workspace build
+# ----------------------------
 WORKDIR $OVERLAY_WS
-
-# build overlay source
 COPY --from=cacher $OVERLAY_WS/src ./src
 ARG OVERLAY_MIXINS="release"
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
-    colcon build \
-      --mixin $OVERLAY_MIXINS
+    colcon build --mixin $OVERLAY_MIXINS
 
-# source entrypoint setup
+# ---- source entrypoint setup ----
 ENV OVERLAY_WS $OVERLAY_WS
 RUN sed --in-place --expression \
       '$isource "$OVERLAY_WS/install/setup.bash"' \
       /ros_entrypoint.sh
+
+# Default working directory
+WORKDIR $OVERLAY_WS
