@@ -52,11 +52,16 @@ RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.1-linu
 # Add Julia to PATH for all future RUN/CMD
 ENV PATH="/root/julia_install/julia-1.11.1/bin:${PATH}"
 
+
 # Ensure Julia uses system OpenSSL and precompile all packages/artifacts at build time
 ENV JULIA_SSL_USE_SYSTEM_LIBS=1
 ENV PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia
 ENV PYTHON_JULIAPKG_OFFLINE=yes
 ENV PYTHONCALL_CONDA_JL_DIR=/root/.julia/pyjuliapkg/.CondaPkg
+ENV JULIA_DEPOT_PATH=/root/.julia
+
+# Clean Julia precompiled cache to avoid version mismatch
+RUN rm -rf /root/.julia/compiled
 
 # Precompile Julia packages and artifacts (including install.jl)
 RUN julia install.jl && julia -e "using Pkg; Pkg.instantiate(); Pkg.precompile()"
