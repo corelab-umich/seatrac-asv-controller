@@ -46,24 +46,27 @@ RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     rm -rf /var/lib/apt/lists/*
 
 # ----------------------------
-# Stage 3: Julia installation
-# ----------------------------
+
+# Stage 3: Julia installation and environment setup
 WORKDIR /root/julia_install/
 RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.1-linux-x86_64.tar.gz \
-    && tar zxvf julia-1.11.1-linux-x86_64.tar.gz -C /usr/local --strip-components=1 \
-    && rm julia-1.11.1-linux-x86_64.tar.gz
+  && tar zxvf julia-1.11.1-linux-x86_64.tar.gz -C /usr/local --strip-components=1 \
+  && rm julia-1.11.1-linux-x86_64.tar.gz
 ENV PATH="/usr/local/bin:$PATH"
 
-# Environment for PythonCall / JuliaCall
-ENV JULIA_PROJECT=@.
-ENV JULIA_PKGDIR=/root/.julia
+# Set Julia and PythonCall/JuliaCall environment variables for consistency
+ENV JULIA_VERSION=1.11.1
+ENV JULIA_DEPOT_PATH=/root/.julia
+ENV JULIA_PROJECT=/root/.julia/environments/pyjuliapkg
 ENV PYTHON_JULIAPKG_EXE=/usr/local/bin/julia
+ENV PYTHON_JULIAPKG_PROJECT=/root/.julia/environments/pyjuliapkg
 ENV PYTHON_JULIAPKG_OFFLINE=yes
-ENV PYTHON_JULIAPKG_IGNORE=true
+ENV PYTHON_JULIACALL_INSTALL=0
 
-# Preinstall Julia packages into global v1.11 environment
+# Preinstall Julia packages into the correct project and depot, and precompile
 COPY deps/install.jl /root/install.jl
-RUN julia /root/install.jl
+RUN julia --project=${JULIA_PROJECT} /root/install.jl && \
+  julia --project=${JULIA_PROJECT} -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
 
 # ----------------------------
 # Stage 4: ROS workspace build

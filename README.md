@@ -21,9 +21,40 @@ docker compose up --build
 ```
 This will compile the local ros ws, build into docker containers, and launch all the services (ctrl-c to stop). For subsequent runs, `--build` can be omitted (unless there are source code changes requiring a rebuild of the docker images). 
 
+## Docker Build Options
+
+### Standard Docker Compose
+```bash
+# Build all services
+docker compose build
+
+# Build specific service
+docker compose build asv_ergo_control
+
+# Build without cache
+docker compose build --no-cache
+```
+
+### Docker Buildx Bake (Advanced)
+For multi-platform builds and advanced build configurations, use Docker Bake:
+
+```bash
+# Build default target
+docker buildx bake
+
+# Build all targets
+docker buildx bake all
+
+# Build specific target
+docker buildx bake foxglove
+
+# Build with custom variables
+docker buildx bake --set "*.platform=linux/amd64,linux/arm64" --set "*.tags=myregistry/asv:v1.0"
+```
+
 ## Individual services
 
-The `docker-compose.yml` file contains some of the different services that can be launched. We can use `docker compose up [service name]` to run a service individually
+The `docker-compose.yml` file contains all the different services that can be launched. We can use `docker compose up [service name]` to run a service individually
 
 ### Advanced
 ```
