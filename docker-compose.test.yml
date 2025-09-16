@@ -1,6 +1,150 @@
-include:
-  - docker-compose.julia.yml
-  - docker-compose.sensor-drivers.yml
-  - docker-compose.mocks.yml
-  - docker-compose.controller.yml
-  - docker-compose.foxglove.yml
+services:
+  synth_data:
+    build: ./
+    command: ros2 run asv_controller synthetic_data_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  rosbag_recorder:
+    build: ./
+    command: bash -c "ros2 bag record -a -o /root/rosbags/$(date +%Y%m%d_%H%M%S) --max-bag-duration 1800 --compression-mode file --compression-format zstd"
+    volumes:
+      - ./.rosbags:/root/rosbags
+      - ./.julia:/root/.julia
+
+  packet_publisher:
+    build: ./
+    ports:
+      - "${UDP_PORT}:${UDP_PORT}/udp"
+    command: ros2 run asv_sensors packet_publisher --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  imu_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors imu_sensor_driver --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  power_level_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors power_level_sensor_driver  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  attitude_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors attitude_sensor_driver   --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  gps_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors gps_sensor_driver --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  wind_sensor_driver:
+    build: ./
+    command: ros2 run asv_sensors wind_sensor_driver --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  measurement_packet_publisher:
+    build: ./
+    command: ros2 run asv_sensors measurement_packet_publisher --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  mock_imu:
+    build: ./
+    network_mode: "host"
+    command: ros2 run asv_sensors mock_imu --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  mock_power_level:
+    build: ./
+    network_mode: "host"
+    command: ros2 run asv_sensors mock_power_level --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  mock_attitude:
+    build: ./
+    network_mode: "host"
+    command: ros2 run asv_sensors mock_attitude --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  mock_gps:
+    build: ./
+    network_mode: "host"
+    command: ros2 run asv_sensors mock_gps --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  mock_wind:
+    build: ./
+    network_mode: "host"
+    command: ros2 run asv_sensors mock_wind --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  asv_ergo_control:
+    build: ./
+    command: ros2 run asv_controller asv_ergo_control  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.jld2/:/root/jld2_files
+      - ./.images/:/root/images
+      - ./.julia:/root/.julia
+
+  transect_control:
+    build: ./
+    command: ros2 run asv_controller transect_control  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.jld2/:/root/jld2_files
+      - ./.images/:/root/images
+      - ./.julia:/root/.julia
+
+  param_estimator:
+    build: ./
+    command: ros2 run asv_controller param_estimator --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  q_map_pub:
+    build: ./
+    command: ros2 run asv_controller q_map_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.images/:/root/images
+      - ./.julia:/root/.julia
+
+  target_q_map_pub:
+    build: ./
+    command: ros2 run asv_controller target_q_map_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.images/:/root/images
+      - ./.julia:/root/.julia
+
+  w_hat_pub:
+    build: ./
+    command: ros2 run asv_controller w_hat_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.images/:/root/images
+      - ./.julia:/root/.julia
+
+  command_publisher:
+    build: ./
+    network_mode: "host"
+    command: ros2 run asv_sensors control_command_publisher --ros-args -p ip_address:=${BOAT_IP} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
+
+  foxglove_bridge:
+    build:
+      dockerfile: ./Dockerfile.foxglove
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./.julia:/root/.julia

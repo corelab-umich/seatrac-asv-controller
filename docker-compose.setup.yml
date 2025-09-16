@@ -1,0 +1,11 @@
+services:
+  asv-ros-sim-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile.setup
+    container_name: asv-ros-sim-setup
+    volumes:
+      - ./\.julia:/root/.julia
+    stdin_open: true    # keep STDIN open (like -i)
+    tty: true           # allocate a TTY (like -t)
+    command: bash

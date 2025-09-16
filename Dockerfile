@@ -1,7 +1,6 @@
 ARG FROM_IMAGE=ros:humble
 ARG OVERLAY_WS=/opt/ros/overlay_ws
 
-# multi-stage for caching
 FROM $FROM_IMAGE AS cacher
 
 # Convert shell into bash
@@ -20,44 +19,62 @@ RUN mkdir -p /tmp/opt && \
     find ./ -name "COLCON_IGNORE" | \
       xargs cp --parents -t /tmp/opt || true
 
-# multi-stage for building
 FROM $FROM_IMAGE AS builder
 
+ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=US/Eastern
-ENV DEBIAN_FRONTEND=noninteractive 
 
 # install overlay dependencies
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS
-RUN apt-get update && apt-get install -y python3-pip curl wget vim tzdata ros-humble-cv-bridge
+RUN apt-get update && apt-get install -y \
+      libssl-dev ca-certificates \
+      python3-pip curl wget vim tzdata ros-humble-cv-bridge \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install juliacall numpy tzlocal\
+    && python3 -c 'import juliacall'
+
 COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
-COPY deps/py_requirements.txt .
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     apt-get update && apt-get install -y\ 
     && rosdep install -y \
       --from-paths \
         src \
       --ignore-src \
-    && pip3 install -r py_requirements.txt \
     && rm -rf /var/lib/apt/lists/*
 
+# ----------------------
+# Install Julia binary
+# ----------------------
+WORKDIR /root/julia_install
+RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.1-linux-x86_64.tar.gz \
+    && tar zxvf julia-1.11.1-linux-x86_64.tar.gz \
+    && ln -s /root/julia_install/julia-1.11.1/bin/julia /usr/local/bin/julia
 
-# Install Julia
-WORKDIR /root/julia_install/
+# ----------------------
+# Julia environment (mounted .julia)
+# ----------------------
+ENV JULIA_DEPOT_PATH=/root/.julia
+ENV JULIA_PROJECT=/root/.julia/environments/pyjuliapkg
+ENV PYTHON_JULIAPKG_EXE=/usr/local/bin/julia
+#ENV PYTHON_JULIAPKG_OFFLINE=yes
+ENV PYTHON_JULIAPKG_OFFLINE=no
+ENV PATH="/usr/local/bin:$PATH"
+
+# Build julia
 COPY deps/install.jl .
-RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.1-linux-x86_64.tar.gz && tar zxvf julia-1.11.1-linux-x86_64.tar.gz
-RUN echo PATH="\$PATH:/root/julia_install/julia-1.11.1/bin" >> ~/.bashrc
+RUN julia -e 'using Pkg; \
+		Pkg.activate("/root/.julia/environments/pyjuliapkg"); \
+		include("install.jl")'
 
-# Set environment variable for JuliaCall to offline mode
-# ENV PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia
-# ENV PYTHON_JULIAPKG_OFFLINE=yes
-# ENV PYTHONCALL_CONDA_JL_DIR=/root/.julia/pyjuliapkg/.CondaPkg
+# Rebuild OpenSSL_jll to match container's libssl
+#RUN julia -e 'using Pkg; Pkg.activate("/root/.julia/environments/pyjuliapkg")'
 
-RUN export PYTHONCALL_CONDA_JL_DIR=/root/.julia/pyjuliapkg/.CondaPkg && \
-    export PYTHON_JULIAPKG_OFFLINE=yes && \
-    export PYTHON_JULIAPKG_EXE=/root/julia_install/julia-1.11.1/bin/julia && \
-    /root/julia_install/julia-1.11.1/bin/julia install.jl
+SHELL ["/bin/bash", "-c"]
 
+# ----------------------
+# Overlay workspace
+# ----------------------
 WORKDIR $OVERLAY_WS
 
 # build overlay source
@@ -67,8 +84,10 @@ RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     colcon build \
       --mixin $OVERLAY_MIXINS
 
-# source entrypoint setup
-ENV OVERLAY_WS $OVERLAY_WS
+# ----------------------
+# Source ROS overlay entrypoint
+# ----------------------
+ENV OVERLAY_WS=$OVERLAY_WS
 RUN sed --in-place --expression \
       '$isource "$OVERLAY_WS/install/setup.bash"' \
       /ros_entrypoint.sh
