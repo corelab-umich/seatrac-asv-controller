@@ -64,3 +64,6 @@ log/
 
 # Backup files
 *.bak
+
+# Notes/Docs
+TODO.md
