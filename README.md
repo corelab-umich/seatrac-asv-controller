@@ -14,6 +14,16 @@ This software is written to work with [ROS2 Humble Hawksbill](https://docs.ros.o
 The Foxglove websocket will be automatically installed through the Dockerfile.
 
 # Running
+## First Install
+Run 
+```
+docker compose -f docker-compose.test.yml build --no-cache
+```
+to install and build the containers with all the dependencies.
+
+Prior to running, it is necessary to open an interactive terminal and mount the `.julia` volume where the installation settings will be stored.
+
+In this terminal, navigate to where the `install.jl` file is located and run `julia install.jl`, ensuring that julia is using the pyjuliapkg environment. This will install all the necessary julia packages and will make them available during runtime preventing errors. This step is only necessary during the first installation.
 
 ## Easy run
 ```

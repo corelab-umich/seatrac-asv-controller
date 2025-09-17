@@ -1,17 +1,22 @@
-services:
-  synth_data:
-    build: ./
-    command: ros2 run asv_controller synthetic_data_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-    volumes:
-      - ./.julia:/root/.julia
+#include:
+#  # - docker-compose.julia.yml
+#  - docker-compose.sensor-drivers.yml
+#  # - docker-compose.mocks.yml
+#  - docker-compose.controller.yml
+#  - docker-compose.foxglove.yml
+#
+#
 
+
+services:
+  # ROSBAG Recorder
   rosbag_recorder:
     build: ./
     command: bash -c "ros2 bag record -a -o /root/rosbags/$(date +%Y%m%d_%H%M%S) --max-bag-duration 1800 --compression-mode file --compression-format zstd"
     volumes:
       - ./.rosbags:/root/rosbags
-      - ./.julia:/root/.julia
 
+  # Sensor Drivers
   packet_publisher:
     build: ./
     ports:
@@ -44,31 +49,7 @@ services:
     volumes:
       - ./.julia:/root/.julia
 
-  mock_imu:
-    build: ./
-    network_mode: "host"
-    command: ros2 run asv_sensors mock_imu --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-
-  mock_power_level:
-    build: ./
-    network_mode: "host"
-    command: ros2 run asv_sensors mock_power_level --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-
-  mock_attitude:
-    build: ./
-    network_mode: "host"
-    command: ros2 run asv_sensors mock_attitude --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-
-  mock_gps:
-    build: ./
-    network_mode: "host"
-    command: ros2 run asv_sensors mock_gps --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-
-  mock_wind:
-    build: ./
-    network_mode: "host"
-    command: ros2 run asv_sensors mock_wind --ros-args -p ip_address:=${IP_ADDRESS} -p udp_port:=${UDP_PORT} --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
-
+# Control Nodes
   asv_ergo_control:
     build: ./
     command: ros2 run asv_controller asv_ergo_control  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
@@ -90,7 +71,6 @@ services:
     command: ros2 run asv_controller param_estimator --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
     volumes:
       - ./.julia:/root/.julia
-
   q_map_pub:
     build: ./
     command: ros2 run asv_controller q_map_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
@@ -119,8 +99,16 @@ services:
     volumes:
       - ./.julia:/root/.julia
 
+# Foxglove Bridge
   foxglove_bridge:
     build:
       dockerfile: ./Dockerfile.foxglove
     ports:
       - "8765:8765"
+
+# Synthetic Data Publisher
+  synth_data:
+    build: ./
+    command: ros2 run asv_controller synthetic_data_pub  --ros-args --log-level ${SENSOR_DRIVERS_LOG_LEVEL}
+    volumes:
+      - ./.julia:/root/.julia
