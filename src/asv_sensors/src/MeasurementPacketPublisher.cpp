@@ -6,6 +6,7 @@
 // other headers
 #include <rclcpp/rclcpp.hpp>
 #include <asv_utils/networking/UDPSender.h>
+#include <boost/math/special_functions/erf.hpp>
 
 // ASV Message Types
 #include <asv_messages/WindMessage.h>
@@ -57,11 +58,11 @@ public:
   MeasurementPacketPublisher() : Node("measurement_packet_publisher")
   {
     // Declare Domain Origin Parameter
-    // this->declare_parameter("origin_latitude", 35.751066);
-    // this->declare_parameter("origin_longitude", -79.034666);
     this->declare_parameter("origin_latitude", 35.703543);
     this->declare_parameter("origin_longitude", -79.042890);
     this->declare_parameter("rated_wind_speed_kts", 1.5);
+    this->declare_parameter("lambda", 1.7947148);
+    this->declare_parameter("k", 2.3007);
 
     auto qos_profile = rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_default))
                       .reliability(RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
@@ -131,28 +132,18 @@ private:
 
     measurement_msg.truewind = true_wind_speed;
 
-    // Adjust the rated true wind speed by subtracting the running average
+    // Convert wind speed to normalized distribution for Kalman Filter
     double rated_wind_ms = this->get_parameter("rated_wind_speed_kts").as_double() * KTS_TO_MS;
     measurement_msg.ratedwind = raw_to_normal(rated_wind_ms);
-
-    // Adjust the true wind speed to the normalized distribution
-    if(std::isnan(raw_to_normal(true_wind_speed))){
-      if(true_wind_speed < rated_wind_ms){
-        measurement_msg.windspeed = -1.0;
-      }else if(true_wind_speed > rated_wind_ms){
-        measurement_msg.windspeed = 1.0;
-      }
-    }else{
-      measurement_msg.windspeed = raw_to_normal(true_wind_speed);
-    }    
+    measurement_msg.windspeed = raw_to_normal(true_wind_speed);
 
     measurement_pub_->publish(measurement_msg);
   }
 
   // Function to convert raw wind speed to normal distribution for KF
   double raw_to_normal(double raw_wind){
-    double lambda = 1.7947148;
-    double k = 2.3007;
+    double lambda = this->get_parameter("lambda").as_double();
+    double k = this->get_parameter("k").as_double();
     double mu = 0.0;
     double std_dev = 1.0;
     return inv_gaussian(weibull(raw_wind, lambda, k), mu, std_dev);
@@ -163,43 +154,17 @@ private:
     return result;
   }
 
-  double inv_gaussian(double x, double mu, double std_dev){
-    double result = mu + sqrt(2.0 * pow(std_dev, 2.0)) * erfinv(-1.0 + 2.0*x);
+  double inv_gaussian(double x, double mu, double std_dev)
+{
+    double y = -1.0 + 2.0 * x;
+
+    // Ensure that y is in-bounds
+    if(y <= -1.0) y = std::nextafter(-1.0, 1.0);
+    if(y >= 1.0) y = std::nextafter(1.0, -1.0);
+
+    double result = mu + sqrt(2.0 * pow(std_dev, 2.0)) * boost::math::erf_inv(y);
     return result;
-  }
-
-  double erfinv(double x) {
-    // Coefficients for approximation
-    const double a[] = {0.886226899, -1.645349621, 0.914624893, -0.140543331};
-    const double b[] = {-2.118377725, 1.442710462, -0.329097515, 0.012229801};
-    const double c[] = {-1.970840454, -1.62490649, 3.429567803, 1.641345311};
-    const double d[] = {3.543889200, 1.637067800};
-
-    // Bounds for the approximation accuracy
-    if (x < -1.0 || x > 1.0) {
-        throw std::domain_error("erfinv(x) only defined for -1 <= x <= 1");
-    }
-    
-    if (x == 0.0) return 0.0;
-    if (x == 1.0) return std::numeric_limits<double>::infinity();
-    if (x == -1.0) return -std::numeric_limits<double>::infinity();
-    
-    double sign = (x > 0) ? 1.0 : -1.0;
-    double ln_term = std::log(1.0 - x * x);
-
-    double result;
-    if (std::abs(x) <= 0.7) {
-        double sum_num = (((a[3] * x + a[2]) * x + a[1]) * x + a[0]) * x;
-        double sum_den = (((b[3] * x + b[2]) * x + b[1]) * x + b[0]) * x + 1.0;
-        result = sum_num / sum_den;
-    } else {
-        double sum_num = ((c[3] * ln_term + c[2]) * ln_term + c[1]) * ln_term + c[0];
-        double sum_den = (d[1] * ln_term + d[0]) * ln_term + 1.0;
-        result = sign * std::sqrt(sum_num / sum_den);
-    }
-
-    return result;
-  }
+}
 
   // Function to calculate the N-S and E-W distance
   void calculateDistance(double lat_origin, double lon_origin, double lat, double lon, double& ns_distance, double& ew_distance) {
