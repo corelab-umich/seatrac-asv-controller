@@ -195,6 +195,8 @@ class ASVErgoControl(Node):
         self.publisher_ = self.create_publisher(Commands, 'asv_command', 10)
         timer_period = 1 # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
+
+        self.get_logger().info('ASV Ergo Control Node has been started.')
     
     def timer_callback(self):
         """ Create control command message """

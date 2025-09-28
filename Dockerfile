@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     apt-get update && apt-get install -y\ 
+      ros-$ROS_DISTRO-foxglove-bridge \
     && rosdep install -y \
       --from-paths \
         src \
