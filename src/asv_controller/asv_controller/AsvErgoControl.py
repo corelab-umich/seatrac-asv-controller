@@ -56,12 +56,12 @@ class ASVErgoControl(Node):
         self.mission_duration_hrs = 3.0
         self.declare_parameter('terminal_soc', 3000.0)
         self.terminal_soc = 3000.0
-        self.declare_parameter('speed_kp', 0.5)
-        self.kp = 0.5
-        self.declare_parameter('speed_ki', 0.01)
-        self.ki = 0.01
-        self.declare_parameter('speed_kd', 0.5)
-        self.kd = 0.5
+        self.declare_parameter('speed_kp', 0.01)
+        self.kp = 0.01
+        self.declare_parameter('speed_ki', 0.0001)
+        self.ki = 0.0001
+        self.declare_parameter('speed_kd', 0.001)
+        self.kd = 0.001
 
         """ Parameter Update Function """
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -145,6 +145,7 @@ class ASVErgoControl(Node):
         self.ts_hrs = None
         self.soc_target = None
         self.target_soc = None
+        self.speed = None
 
         # Speed Controller variables
         self.error_sum = 0.0
@@ -195,6 +196,8 @@ class ASVErgoControl(Node):
         self.publisher_ = self.create_publisher(Commands, 'asv_command', 10)
         timer_period = 1 # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
+
+        self.get_logger().info('ASV Ergo Control Node has been started.')
     
     def timer_callback(self):
         """ Create control command message """
@@ -359,6 +362,7 @@ class ASVErgoControl(Node):
         difference = self.error - prev_error
         speed = self.kp*self.error + self.ki*self.error_sum + self.kd*difference
         speed = max(self.soc_controller.boat.v_min, min(speed, self.soc_controller.boat.v_max))
+        self.speed = speed
         return speed, target_soc
     
     def measurement_aggregator(self, msg):
@@ -425,9 +429,11 @@ class ASVErgoControl(Node):
 
             self.jlstore("current_soc", self.state_of_charge)
             self.jlstore("soc_target", self.target_soc)
+            
+            self.jlstore("speed", self.speed)
 
             # Save variable states to JLD2 file
-            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q_matrix", "measurement_pts", "measurement_w", "current_soc", "soc_target"]
+            variables_to_save = ["state", "est", "w_hat", "q_map", "ergo_q_map", "target_q_matrix", "measurement_pts", "measurement_w", "current_soc", "soc_target", "speed"]
             jl.save_selected_variables(self.filename, variables_to_save)  
 
             # Save plots

@@ -3,15 +3,12 @@ ARG OVERLAY_WS=/opt/ros/overlay_ws
 
 FROM $FROM_IMAGE AS cacher
 
-# Convert shell into bash
 SHELL [ "/bin/bash", "-c" ]
 
-# clone overlay source
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS/src
 COPY src/ ./
 
-# copy manifests for caching
 WORKDIR /opt
 RUN mkdir -p /tmp/opt && \
     find ./ -name "package.xml" | \
@@ -24,7 +21,7 @@ FROM $FROM_IMAGE AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=US/Eastern
 
-# install overlay dependencies
+# ---- System dependencies ----
 ARG OVERLAY_WS
 WORKDIR $OVERLAY_WS
 RUN apt-get update && apt-get install -y \
@@ -37,6 +34,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=cacher /tmp/$OVERLAY_WS/src ./src
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
     apt-get update && apt-get install -y\ 
+      ros-$ROS_DISTRO-foxglove-bridge \
     && rosdep install -y \
       --from-paths \
         src \
@@ -76,13 +74,10 @@ SHELL ["/bin/bash", "-c"]
 # Overlay workspace
 # ----------------------
 WORKDIR $OVERLAY_WS
-
-# build overlay source
 COPY --from=cacher $OVERLAY_WS/src ./src
 ARG OVERLAY_MIXINS="release"
 RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
-    colcon build \
-      --mixin $OVERLAY_MIXINS
+    colcon build --mixin $OVERLAY_MIXINS
 
 # ----------------------
 # Source ROS overlay entrypoint
@@ -91,3 +86,6 @@ ENV OVERLAY_WS=$OVERLAY_WS
 RUN sed --in-place --expression \
       '$isource "$OVERLAY_WS/install/setup.bash"' \
       /ros_entrypoint.sh
+
+# Default working directory
+WORKDIR $OVERLAY_WS
